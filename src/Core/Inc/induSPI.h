@@ -1,6 +1,9 @@
 #ifndef INDUSPI_H
 #define INDUSPI_H
 
+#define LOW 0
+#define HIGH 1
+
 #include "stm32f103xb.h"
 #include "stdbool.h"
 #include "stdint.h"
@@ -21,9 +24,7 @@ extern "C" {
 #endif
 
 //empezamos
-void induInit(){
-
-}
+void induInit();
 void moduleDet();
 
 void digWrite(int salida, bool estado);
@@ -37,6 +38,12 @@ uint8_t anRead(int entrada);
 void plc_read_inputs();
 void plc_write_outputs();
 void plc_run_cycle();
+void plc_store_spi_inputs();
+
+
+void SystemClock_Config(void);
+void MX_GPIO_Init(void);
+void MX_SPI1_Init(void);
 
 #ifdef __cplusplus
 }
