@@ -1,8 +1,10 @@
 #ifndef INDUSPI_H
 #define INDUSPI_H
 
+#include "stm32f103xb.h"
 #include "stdbool.h"
 #include "stdint.h"
+#include "main.h"
 typedef struct 
 {
     bool cpuId[4];
@@ -11,16 +13,17 @@ typedef struct
     bool modOd[8];
     uint8_t modIa[4];
     uint8_t modOa[4];
-    
 }estAct_t;
-static estAct_t estAct;
+SPI_HandleTypeDef hspi1;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 //empezamos
+void induInit(){
 
+}
 void moduleDet();
 
 void digWrite(int salida, bool estado);
@@ -30,6 +33,10 @@ void anWrite(int salida, uint8_t valor);
 bool digRead(int entrada);
 
 uint8_t anRead(int entrada);
+
+void plc_read_inputs();
+void plc_write_outputs();
+void plc_run_cycle();
 
 #ifdef __cplusplus
 }
