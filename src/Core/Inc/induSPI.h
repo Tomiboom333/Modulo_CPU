@@ -27,11 +27,11 @@ extern "C" {
 void induInit();
 void moduleDet();
 
-void digWrite(int salida, bool estado);
+void digWrite(int modulo, int salida, bool estado);
 
 void anWrite(int salida, uint8_t valor);
 
-bool digRead(int entrada);
+bool digRead(int modulo, int entrada);
 
 uint8_t anRead(int entrada);
 

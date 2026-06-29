@@ -7,7 +7,8 @@ static uint8_t spiRxBuffer[5];
 static volatile bool spiTransferInProgress = false;
 static volatile bool spiInputsReady = false;
 
-
+int entCpu[4] = {12,13,14,15};
+int salCpu[4] = {3,4,5,6};
 
 void induInit(void){
     HAL_Init();
@@ -16,16 +17,23 @@ void induInit(void){
     MX_SPI1_Init();
 }
 
-void digWrite(int salida, bool estado){
-    estAct.modOd[salida] = estado; // guardo el estado deseado de la salida elegida.
+void digWrite(int modulo, int salida, bool estado){
+    //modulo = 0 -> CPU
+    //modulo = 1 -> I/O 
+
+    if(modulo) estAct.modOd[salida] = estado; // guardo el estado deseado de la salida elegida.
+    else estAct.cpuOd[salida] = estado;
 }
 
 void anWrite(int salida, uint8_t valor){
     estAct.modOa[salida] = valor; // guardo el valor deseado (0 a 255) de la salida elegida.
 }
 
-bool digRead(int entrada){
-    return estAct.modId[entrada];
+bool digRead(int modulo, int entrada){
+    //modulo = 0 -> CPU
+    //modulo = 1 -> I/O 
+    if(modulo) return estAct.cpuId[entrada];
+    else return estAct.modId[entrada];
 }
 
 uint8_t anRead(int entrada){
@@ -79,8 +87,11 @@ void plc_write_outputs(void){
         bufTx[i + 1] = estAct.modOa[i];
     }
     HAL_SPI_Transmit_IT(&hspi1, bufTx, 5);
-} 
 
+    for(int i=0; i<4; i++){
+        HAL_GPIO_WritePin(GPIOB, salCpu[i], estAct.cpuOd[i]);
+    }
+} 
 
 void plc_run_cycle(void (*fuser)()){
     if (!spiTransferInProgress && !spiInputsReady) {

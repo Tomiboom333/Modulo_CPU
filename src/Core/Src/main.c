@@ -2,7 +2,7 @@
 #include "induSPI.h"
 
 void algo(){
-  if(digRead(1)) digWrite(1, HIGH);
+  if(digRead(1,1)) digWrite(1, 1, HIGH);
 }
 int main(void)
 {
