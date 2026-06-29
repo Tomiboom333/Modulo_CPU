@@ -2,8 +2,9 @@
 #include "induSPI.h"
 
 void algo(){
-  if(digRead(1,1)) digWrite(1, 1, HIGH);
+  if(digRead(MOD_IO, IO_SAL_1)) digWrite(MOD_IO, IO_SAL_1, HIGH);
 }
+
 int main(void)
 {
   induInit();

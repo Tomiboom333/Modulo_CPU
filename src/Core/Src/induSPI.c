@@ -10,6 +10,10 @@ static volatile bool spiInputsReady = false;
 int entCpu[4] = {12,13,14,15};
 int salCpu[4] = {3,4,5,6};
 
+static void SystemClock_Config(void);
+static void MX_GPIO_Init(void);
+static void MX_SPI1_Init(void);
+
 void induInit(void){
     HAL_Init();
     SystemClock_Config();
@@ -23,6 +27,7 @@ void digWrite(int modulo, int salida, bool estado){
 
     if(modulo) estAct.modOd[salida] = estado; // guardo el estado deseado de la salida elegida.
     else estAct.cpuOd[salida] = estado;
+    
 }
 
 void anWrite(int salida, uint8_t valor){
@@ -32,8 +37,8 @@ void anWrite(int salida, uint8_t valor){
 bool digRead(int modulo, int entrada){
     //modulo = 0 -> CPU
     //modulo = 1 -> I/O 
-    if(modulo) return estAct.cpuId[entrada];
-    else return estAct.modId[entrada];
+    if(modulo) return estAct.modId[entrada];
+    else  return estAct.cpuId[entrada];
 }
 
 uint8_t anRead(int entrada){
@@ -52,7 +57,7 @@ void plc_store_spi_inputs(void){
         estAct.modId[i] = (spiRxBuffer[0] >> i) & 0x01;
     }
 
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 2; i++) {
         estAct.modIa[i] = spiRxBuffer[i + 1];
     }
 
@@ -66,16 +71,16 @@ void plc_read_inputs(void){
     }
 
     spiTxBuffer[0] = 0x01;
-    for (int i = 1; i < 5; i++) {
+    for (int i = 1; i < 3; i++) {
         spiTxBuffer[i] = 0x00;
     }
 
     spiTransferInProgress = true;
-    HAL_SPI_TransmitReceive_IT(&hspi1, spiTxBuffer, spiRxBuffer, 5);
+    HAL_SPI_TransmitReceive_IT(&hspi1, spiTxBuffer, spiRxBuffer, 3);
 }
 
 void plc_write_outputs(void){
-    uint8_t bufTx[5] = {0};
+    uint8_t bufTx[3] = {0};
 
     for (int i = 0; i < 8; i++) {
         if (estAct.modOd[i]) {
@@ -83,10 +88,10 @@ void plc_write_outputs(void){
         }
     }
 
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 2; i++) {
         bufTx[i + 1] = estAct.modOa[i];
     }
-    HAL_SPI_Transmit_IT(&hspi1, bufTx, 5);
+    HAL_SPI_Transmit_IT(&hspi1, bufTx, 3);
 
     for(int i=0; i<4; i++){
         HAL_GPIO_WritePin(GPIOB, salCpu[i], estAct.cpuOd[i]);
