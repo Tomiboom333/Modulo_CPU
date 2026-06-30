@@ -76,7 +76,9 @@ void plc_read_inputs(void){
     }
 
     spiTransferInProgress = true;
+    HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS2_GPIO_Port, GPIO_PIN_SET);
     HAL_SPI_TransmitReceive_IT(&hspi1, spiTxBuffer, spiRxBuffer, 3);
+    HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS2_GPIO_Port, GPIO_PIN_RESET);
 }
 
 void plc_write_outputs(void){
@@ -91,7 +93,9 @@ void plc_write_outputs(void){
     for (int i = 0; i < 2; i++) {
         bufTx[i + 1] = estAct.modOa[i];
     }
+    HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS2_GPIO_Port, GPIO_PIN_SET);
     HAL_SPI_Transmit_IT(&hspi1, bufTx, 3);
+    HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS2_GPIO_Port, GPIO_PIN_RESET);
 
     for(int i=0; i<4; i++){
         HAL_GPIO_WritePin(GPIOB, salCpu[i], estAct.cpuOd[i]);
@@ -146,11 +150,7 @@ void SystemClock_Config(void)
   }
 }
 
-/**
-  * @brief SPI1 Initialization Function
-  * @param None
-  * @retval None
-  */
+
 void MX_SPI1_Init(void)
 {
 
@@ -168,7 +168,7 @@ void MX_SPI1_Init(void)
   hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
   hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
-  hspi1.Init.NSS = SPI_NSS_HARD_OUTPUT;
+  hspi1.Init.NSS = SPI_NSS_SOFT;
   hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_8;
   hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
@@ -184,11 +184,7 @@ void MX_SPI1_Init(void)
 
 }
 
-/**
-  * @brief GPIO Initialization Function
-  * @param None
-  * @retval None
-  */
+
 void MX_GPIO_Init(void)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
@@ -203,15 +199,16 @@ void MX_GPIO_Init(void)
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(SPI1_NSS2_GPIO_Port, SPI1_NSS2_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, SPI1_NSS2_Pin|SPI1_NSS_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pin : SPI1_NSS2_Pin */
-  GPIO_InitStruct.Pin = SPI1_NSS2_Pin;
+  /*Configure GPIO pins : SPI1_NSS2_Pin SPI1_NSS_Pin */
+  GPIO_InitStruct.Pin = SPI1_NSS2_Pin|SPI1_NSS_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(SPI1_NSS2_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
   
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3|GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_6|GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15, GPIO_PIN_RESET);
   
   /* USER CODE BEGIN MX_GPIO_Init_2 */
   GPIO_InitStruct.Pin = GPIO_PIN_3;
@@ -257,14 +254,7 @@ void MX_GPIO_Init(void)
   /* USER CODE END MX_GPIO_Init_2 */
 }
 
-/* USER CODE BEGIN 4 */
 
-/* USER CODE END 4 */
-
-/**
-  * @brief  This function is executed in case of error occurrence.
-  * @retval None
-  */
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
