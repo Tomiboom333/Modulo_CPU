@@ -2,8 +2,8 @@
 #include "stm32f103xb.h"
 estAct_t estAct;
 
-static uint8_t spiTxBuffer[5];
-static uint8_t spiRxBuffer[5];
+static uint8_t spiTxBuffer[4];//falta cambiar
+static uint8_t spiRxBuffer[4];
 static volatile bool spiTransferInProgress = false;
 static volatile bool spiInputsReady = false;
 
@@ -77,30 +77,30 @@ void plc_read_inputs(void){
 
     spiTransferInProgress = true;
     HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS2_GPIO_Port, GPIO_PIN_SET);
-    HAL_SPI_TransmitReceive_IT(&hspi1, spiTxBuffer, spiRxBuffer, 3);
+    HAL_SPI_TransmitReceive_IT(&hspi1, spiTxBuffer, spiRxBuffer, 4);
     HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS2_GPIO_Port, GPIO_PIN_RESET);
 }
 
 void plc_write_outputs(void){
-    uint8_t bufTx[3] = {0};
+    uint8_t bufTx[0] = 0x02;
 
     for (int i = 0; i < 8; i++) {
         if (estAct.modOd[i]) {
-            bufTx[0] |= (uint8_t)(0x01 << i);
+            bufTx[1] |= (uint8_t)(0x01 << i);
         }
     }
 
-    for (int i = 0; i < 2; i++) {
+    for (int i = 1; i < 3; i++) {
         bufTx[i + 1] = estAct.modOa[i];
     }
     HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS2_GPIO_Port, GPIO_PIN_SET);
-    HAL_SPI_Transmit_IT(&hspi1, bufTx, 3);
+    HAL_SPI_Transmit_IT(&hspi1, bufTx, 4);
     HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS2_GPIO_Port, GPIO_PIN_RESET);
 
-    for(int i=0; i<4; i++){
+    for(int i=0; i<2; i++){
         HAL_GPIO_WritePin(GPIOB, salCpu[i], estAct.cpuOd[i]);
     }
-} 
+}
 
 void plc_run_cycle(void (*fuser)()){
     if (!spiTransferInProgress && !spiInputsReady) {
