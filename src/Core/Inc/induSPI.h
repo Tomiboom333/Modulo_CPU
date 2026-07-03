@@ -59,6 +59,7 @@ extern "C" {
 #endif
 
 //empezamos
+void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi);
 void induInit();
 void moduleDet();
 

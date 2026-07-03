@@ -49,6 +49,8 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi){
     if (hspi == &hspi1) {
         spiTransferInProgress = false;
         plc_store_spi_inputs();
+           /* Deassert CS (NSS) after transaction completed */
+           HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_RESET);
     }
 }
 
@@ -71,20 +73,22 @@ void plc_read_inputs(void){
     }
 
     spiTxBuffer[0] = 0x01;
-    for (int i = 1; i < 3; i++) {
+    
+    for (int i = 1; i < 4; i++) {//asegurarse que lo demas es 0
         spiTxBuffer[i] = 0x00;
     }
 
     spiTransferInProgress = true;
-    HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS2_GPIO_Port, GPIO_PIN_SET);
+        HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_SET);
     HAL_SPI_TransmitReceive_IT(&hspi1, spiTxBuffer, spiRxBuffer, 4);
-    HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS2_GPIO_Port, GPIO_PIN_RESET);
 }
 
 void plc_write_outputs(void){
     uint8_t bufTx[4];
     bufTx[0] = 0x02;
     bufTx[1] = 0x00;
+    bufTx[2] = 0x00;
+    bufTx[3] = 0x00;
 
     for (int i = 0; i < 8; i++) {
         if (estAct.modOd[i]) {
@@ -92,15 +96,23 @@ void plc_write_outputs(void){
         }
     }
 
-    for (int i = 1; i < 3; i++) {
-        bufTx[i + 1] = estAct.modOa[i];
+    /* estAct.modOa has two channels indexed 0 and 1 */
+    for (int i = 0; i < 2; i++) {
+        bufTx[i + 2] = estAct.modOa[i];
     }
-    HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS2_GPIO_Port, GPIO_PIN_SET);
+        HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_SET);
     HAL_SPI_Transmit_IT(&hspi1, bufTx, 4);
-    HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS2_GPIO_Port, GPIO_PIN_RESET);
 
     for(int i=0; i<2; i++){
         HAL_GPIO_WritePin(GPIOB, salCpu[i], estAct.cpuOd[i]);
+    }
+}
+
+void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi){
+    if (hspi == &hspi1) {
+        spiTransferInProgress = false;
+        /* Deassert CS (NSS) after transmit completes */
+           HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_RESET);
     }
 }
 
