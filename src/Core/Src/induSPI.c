@@ -54,7 +54,7 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi){
 
 void plc_store_spi_inputs(void){
     for (int i = 0; i < 8; i++) {
-        estAct.modId[i] = (spiRxBuffer[0] >> i) & 0x01;
+        estAct.modId[i] = (spiRxBuffer[0] >> i) & 0x1;
     }
 
     for (int i = 0; i < 2; i++) {
@@ -82,7 +82,9 @@ void plc_read_inputs(void){
 }
 
 void plc_write_outputs(void){
-    uint8_t bufTx[0] = 0x02;
+    uint8_t bufTx[4];
+    bufTx[0] = 0x02;
+    bufTx[1] = 0x00;
 
     for (int i = 0; i < 8; i++) {
         if (estAct.modOd[i]) {
