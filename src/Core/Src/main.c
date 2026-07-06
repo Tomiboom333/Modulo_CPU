@@ -2,12 +2,7 @@
 #include "induSPI.h"
 
 void algo(){
-  if((digRead(MOD_CPU, CPU_ENT_1))){ 
-    digWrite(MOD_CPU, CPU_SAL_1, HIGH);
-  }
-  else{
-    digWrite(MOD_CPU, CPU_SAL_1, LOW);
-  }
+  digWrite(MOD_IO, IO_SAL_1, HIGH);
 }
 int main(void)
 {
