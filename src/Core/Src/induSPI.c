@@ -2,13 +2,16 @@
 #include "stm32f103xb.h"
 estAct_t estAct;
 
+#define SPI_TRANSFER_TIMEOUT_MS 5U
+
 static uint8_t spiTxBuffer[4];//falta cambiar
 static uint8_t spiRxBuffer[4];
 static volatile bool spiTransferInProgress = false;
 static volatile bool spiInputsReady = false;
+static volatile uint32_t spiTransferStartTick = 0;
 
-int entCpu[4] = {12,13,14,15};
-int salCpu[4] = {3,4,5,6};
+static uint16_t entCpu[4] = {GPIO_PIN_12, GPIO_PIN_13, GPIO_PIN_14, GPIO_PIN_15};
+static uint16_t salCpu[4] = {GPIO_PIN_3, GPIO_PIN_4, GPIO_PIN_5, GPIO_PIN_6};
 
 static void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
@@ -17,6 +20,8 @@ static void MX_SPI1_Init(void);
 void induInit(void){
     HAL_Init();
     SystemClock_Config();
+    __HAL_RCC_AFIO_CLK_ENABLE();
+    __HAL_AFIO_REMAP_SWJ_NOJTAG();
     MX_GPIO_Init();
     MX_SPI1_Init();
 }
@@ -48,6 +53,7 @@ uint8_t anRead(int entrada){
 void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi){
     if (hspi == &hspi1) {
         spiTransferInProgress = false;
+        spiTransferStartTick = 0;
         plc_store_spi_inputs();
            /* Deassert CS (NSS) after transaction completed */
            HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_RESET);
@@ -68,7 +74,17 @@ void plc_store_spi_inputs(void){
 
 
 void plc_read_inputs(void){
+    for(int i= 0; i<4;i++){
+        estAct.cpuId[i] = HAL_GPIO_ReadPin(GPIOB, entCpu[i]);
+    }
+
     if (spiTransferInProgress) {
+        if ((HAL_GetTick() - spiTransferStartTick) > SPI_TRANSFER_TIMEOUT_MS) {
+            spiTransferInProgress = false;
+            spiTransferStartTick = 0;
+            spiInputsReady = true;
+            HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_RESET);
+        }
         return;
     }
 
@@ -79,11 +95,20 @@ void plc_read_inputs(void){
     }
 
     spiTransferInProgress = true;
-        HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_SET);
+    spiTransferStartTick = HAL_GetTick();
+    HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_SET);
     HAL_SPI_TransmitReceive_IT(&hspi1, spiTxBuffer, spiRxBuffer, 4);
 }
 
 void plc_write_outputs(void){
+    for (int i = 0; i < 4; i++) {
+        HAL_GPIO_WritePin(GPIOB, salCpu[i], estAct.cpuOd[i]);
+    }
+
+    if (spiTransferInProgress) {
+        return;
+    }
+
     uint8_t bufTx[4];
     bufTx[0] = 0x02;
     bufTx[1] = 0x00;
@@ -100,35 +125,31 @@ void plc_write_outputs(void){
     for (int i = 0; i < 2; i++) {
         bufTx[i + 2] = estAct.modOa[i];
     }
-        HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_SET);
-    HAL_SPI_Transmit_IT(&hspi1, bufTx, 4);
 
-    for(int i=0; i<2; i++){
-        HAL_GPIO_WritePin(GPIOB, salCpu[i], estAct.cpuOd[i]);
-    }
+    HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_SET);
+    HAL_SPI_Transmit_IT(&hspi1, bufTx, 4);
 }
 
 void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi){
     if (hspi == &hspi1) {
         spiTransferInProgress = false;
+        spiTransferStartTick = 0;
         /* Deassert CS (NSS) after transmit completes */
            HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_RESET);
     }
 }
 
-void plc_run_cycle(void (*fuser)()){
-    if (!spiTransferInProgress && !spiInputsReady) {
-        plc_read_inputs();
-    }
 
-    if (spiInputsReady) {
-        //codigo del usuario
+
+void plc_run_cycle(void (*fuser)(void)){
+    plc_read_inputs();
+
+    if (!spiTransferInProgress || spiInputsReady) {
         fuser();
         plc_write_outputs();
         spiInputsReady = false;
     }
 }
-
 void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
@@ -164,8 +185,12 @@ void SystemClock_Config(void)
   }
 }
 
-
-void MX_SPI1_Init(void)
+/**
+  * @brief SPI1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_SPI1_Init(void)
 {
 
   /* USER CODE BEGIN SPI1_Init 0 */
@@ -198,8 +223,12 @@ void MX_SPI1_Init(void)
 
 }
 
-
-void MX_GPIO_Init(void)
+/**
+  * @brief GPIO Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_GPIO_Init(void)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
   /* USER CODE BEGIN MX_GPIO_Init_1 */
@@ -207,13 +236,15 @@ void MX_GPIO_Init(void)
   /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOD_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
-  __HAL_RCC_GPIOC_CLK_ENABLE();
-  __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOA, SPI1_NSS2_Pin|SPI1_NSS_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3|GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_6, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : SPI1_NSS2_Pin SPI1_NSS_Pin */
   GPIO_InitStruct.Pin = SPI1_NSS2_Pin|SPI1_NSS_Pin;
@@ -221,54 +252,33 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-  
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3|GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_6|GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15, GPIO_PIN_RESET);
-  
+
+  /*Configure GPIO pins : PB12 PB13 PB14 PB15 */
+  GPIO_InitStruct.Pin = GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : PB3 PB4 PB5 PB6 */
+  GPIO_InitStruct.Pin = GPIO_PIN_3|GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_6;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
   /* USER CODE BEGIN MX_GPIO_Init_2 */
-  GPIO_InitStruct.Pin = GPIO_PIN_3;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-  GPIO_InitStruct.Pin = GPIO_PIN_4;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-  GPIO_InitStruct.Pin = GPIO_PIN_5;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-  GPIO_InitStruct.Pin = GPIO_PIN_6;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-  GPIO_InitStruct.Pin = GPIO_PIN_12;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-  GPIO_InitStruct.Pin = GPIO_PIN_13;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-  GPIO_InitStruct.Pin = GPIO_PIN_14;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-  GPIO_InitStruct.Pin = GPIO_PIN_15;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /* USER CODE END MX_GPIO_Init_2 */
 }
 
+/* USER CODE BEGIN 4 */
 
+/* USER CODE END 4 */
+
+/**
+  * @brief  This function is executed in case of error occurrence.
+  * @retval None
+  */
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
@@ -279,7 +289,6 @@ void Error_Handler(void)
   }
   /* USER CODE END Error_Handler_Debug */
 }
-
 #ifdef USE_FULL_ASSERT
 /**
   * @brief  Reports the name of the source file and the source line number

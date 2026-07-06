@@ -73,7 +73,7 @@ uint8_t anRead(int entrada);
 
 void plc_read_inputs();
 void plc_write_outputs();
-void plc_run_cycle();
+void plc_run_cycle(void (*fuser)(void));
 void plc_store_spi_inputs();
 
 
