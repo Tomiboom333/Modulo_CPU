@@ -56,7 +56,7 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi){
         spiTransferStartTick = 0;
         plc_store_spi_inputs();
            /* Deassert CS (NSS) after transaction completed */
-           HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_RESET);
+           HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_SET);//cambiar a set
     }
 }
 
@@ -96,7 +96,7 @@ void plc_read_inputs(void){
 
     spiTransferInProgress = true;
     spiTransferStartTick = HAL_GetTick();
-    HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_RESET);//cambiar por reset
     HAL_SPI_TransmitReceive_IT(&hspi1, spiTxBuffer, spiRxBuffer, 4);
 }
 
@@ -126,7 +126,7 @@ void plc_write_outputs(void){
         bufTx[i + 2] = estAct.modOa[i];
     }
 
-    HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_RESET);//cambiar por reset
     HAL_SPI_Transmit_IT(&hspi1, bufTx, 4);
 }
 
@@ -135,7 +135,7 @@ void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi){
         spiTransferInProgress = false;
         spiTransferStartTick = 0;
         /* Deassert CS (NSS) after transmit completes */
-           HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_RESET);
+           HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_SET);//cambiar a set
     }
 }
 
