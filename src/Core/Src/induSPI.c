@@ -142,13 +142,12 @@ void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi){
 
 
 void plc_run_cycle(void (*fuser)(void)){
-    plc_read_inputs();
-
-    if (!spiTransferInProgress || spiInputsReady) {
-        fuser();
-        plc_write_outputs();
-        spiInputsReady = false;
-    }
+    //plc_read_inputs();
+    fuser();
+    plc_write_outputs();
+    // if (!spiTransferInProgress || spiInputsReady) {
+        //     spiInputsReady = false;
+    // }
 }
 void SystemClock_Config(void)
 {
@@ -202,12 +201,13 @@ static void MX_SPI1_Init(void)
   /* USER CODE END SPI1_Init 1 */
   /* SPI1 parameter configuration*/
   hspi1.Instance = SPI1;
+  hspi1.Init.Mode = SPI_MODE_MASTER;
   hspi1.Init.Direction = SPI_DIRECTION_2LINES;
   hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
   hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
-  hspi1.Init.NSS = SPI_NSS_SOFT;
-  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_8;
+  hspi1.Init.NSS = SPI_NSS_HARD_OUTPUT;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
   hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -217,7 +217,8 @@ static void MX_SPI1_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN SPI1_Init 2 */
-
+  HAL_NVIC_SetPriority(SPI1_IRQn, 0, 0);//faltaba esto
+  HAL_NVIC_EnableIRQ(SPI1_IRQn);//faltaba esto
   /* USER CODE END SPI1_Init 2 */
 
 }
