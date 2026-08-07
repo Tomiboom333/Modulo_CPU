@@ -2,10 +2,13 @@
 #include "induSPI.h"
 
 void algo(){
-  anWrite(IO_SAL_1, 10);
+  digWrite(MOD_IO, IO_SAL_1, HIGH);
+  //digWrite(MOD_IO, IO_SAL_2, HIGH);
+  //anWrite(IO_SAL_1, 255);
+  anWrite(1, 255);
 }
 void algo2(){
-  anWrite(IO_SAL_1, 10);
+  digWrite(MOD_IO, IO_SAL_1, LOW);
 }
 int main(void)
 {
