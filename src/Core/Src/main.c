@@ -8,15 +8,13 @@ void algo(){
   anWrite(1, 255);
 }
 void algo2(){
-  digWrite(MOD_IO, IO_SAL_1, LOW);
+  digWrite(MOD_CPU, CPU_SAL_1, digRead(MOD_CPU, CPU_ENT_1));
+  digRead(MOD_IO, IO_ENT_1);
 }
 int main(void)
 {
   induInit();
   while(1){
-    plc_run_cycle(algo);
-    HAL_Delay(1000);
     plc_run_cycle(algo2);
-    HAL_Delay(1000);
   }
 }

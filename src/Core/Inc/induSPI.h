@@ -5,8 +5,25 @@
 #define HIGH 1
 
 #define MOD_CPU 0
-#define MOD_IO 1
-#define MOD_MBUS 2
+#define MOD_IO 1//falta borrarlo
+
+#define MOD_O1 1
+#define MOD_O2 2
+#define MOD_O3 3
+#define MOD_O4 4
+#define MOD_O5 5
+
+#define MOD_I1 1
+#define MOD_I2 2
+#define MOD_I3 3
+#define MOD_I4 4
+#define MOD_I5 5
+
+#define MOD_MBUS1 1
+#define MOD_MBUS2 2
+#define MOD_MBUS3 3
+#define MOD_MBUS4 4
+#define MOD_MBUS5 5
 
 #define IO_ENT_1 0
 #define IO_ENT_2 1
