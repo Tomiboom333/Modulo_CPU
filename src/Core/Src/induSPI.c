@@ -17,6 +17,8 @@ static void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_SPI1_Init(void);
 
+volatile bool receptionReady=false;
+
 void induInit(void){
     HAL_Init();
     SystemClock_Config();
@@ -55,15 +57,15 @@ uint8_t anRead(int entrada){
     return estAct.modIa[entrada];
 }
 
-void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi){
-    if (hspi == &hspi1) {
-        spiTransferInProgress = false;
-        spiTransferStartTick = 0;
-        plc_store_spi_inputs();
-           /* Deassert CS (NSS) after transaction completed */
-           HAL_GPIO_WritePin(SPI1_NSS2_GPIO_Port, SPI1_NSS2_Pin, GPIO_PIN_SET);//cambiar a set
-    }
-}
+// void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi){
+//     if (hspi == &hspi1) {
+//         spiTransferInProgress = false;
+//         spiTransferStartTick = 0;
+//         plc_store_spi_inputs();
+//            /* Deassert CS (NSS) after transaction completed */
+//            HAL_GPIO_WritePin(SPI1_NSS2_GPIO_Port, SPI1_NSS2_Pin, GPIO_PIN_SET);//cambiar a set
+//     }
+// }
 
 void plc_store_spi_inputs(void){
     for (int i = 0; i < 8; i++) {
@@ -98,14 +100,21 @@ void plc_read_inputs(void){
     for (int i = 1; i < 4; i++) {//asegurarse que lo demas es 0
         spiTxBuffer[i] = 0x00;
     }
+    receptionReady=false;
 
     HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_SET);  //cambiar a set
     HAL_GPIO_WritePin(SPI1_NSS2_GPIO_Port, SPI1_NSS2_Pin, GPIO_PIN_RESET);
-    HAL_SPI_Transmit_IT(&hspi1, spiTxBuffer, 4);
+    HAL_SPI_Transmit_IT(&hspi1, (uint8_t *)&spiTxBuffer, 4);
+
     //spiTransferInProgress = true;
     //spiTransferStartTick = HAL_GetTick();
-    //HAL_GPIO_WritePin(SPI1_NSS2_GPIO_Port, SPI1_NSS2_Pin, GPIO_PIN_RESET);//cambiar por reset
-    //HAL_SPI_TransmitReceive_IT(&hspi1, spiTxBuffer, spiRxBuffer, 4);
+    for (int i = 0; i < 4; i++) {//asegurarse que lo demas es 0
+        spiRxBuffer[i] = 0x00;
+    }
+    HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_SET);  //cambiar a set
+    HAL_GPIO_WritePin(SPI1_NSS2_GPIO_Port, SPI1_NSS2_Pin, GPIO_PIN_RESET);
+    HAL_SPI_Receive_IT(&hspi1, (uint8_t *)&spiRxBuffer, 4);
+
 }
 
 void plc_write_outputs(void){
@@ -135,15 +144,26 @@ void plc_write_outputs(void){
     }
 
     HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_RESET);//cambiar por reset
+    HAL_GPIO_WritePin(SPI1_NSS2_GPIO_Port, SPI1_NSS2_Pin, GPIO_PIN_SET);
     HAL_SPI_Transmit_IT(&hspi1, bufTx, 4);
 }
 
 void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi){
     if (hspi == &hspi1) {
-        spiTransferInProgress = false;
-        spiTransferStartTick = 0;
+        receptionReady=true;
+
         /* Deassert CS (NSS) after transmit completes */
            //HAL_GPIO_WritePin(SPI1_NSS2_GPIO_Port, SPI1_NSS2_Pin, GPIO_PIN_SET);//cambiar a set
+        // HAL_GPIO_WritePin(SPI1_NSS2_GPIO_Port, SPI1_NSS2_Pin, GPIO_PIN_SET);//cambiar a set
+        // HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_SET);//cambiar a set
+    }
+}
+
+void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi){
+    if (hspi == &hspi1) {
+        HAL_GPIO_WritePin(SPI1_NSS2_GPIO_Port, SPI1_NSS2_Pin, GPIO_PIN_SET);//cambiar a set
+        HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_SET);//cambiar a set
+        plc_store_spi_inputs();
     }
 }
 
