@@ -53,9 +53,6 @@
 #define CPU_SAL_3 2
 #define CPU_SAL_4 3
 
-#define I0_0 digRead(MOD_IO, IO_ENT_1)
-
-
 #include "stm32f103xb.h"
 #include "stdbool.h"
 #include "stdint.h"
@@ -69,7 +66,7 @@ typedef struct
     uint8_t modIa[2];
     uint8_t modOa[2];
 }estAct_t;
-SPI_HandleTypeDef hspi1;
+extern SPI_HandleTypeDef hspi1;
 
 #ifdef __cplusplus
 extern "C" {

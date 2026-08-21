@@ -1,14 +1,19 @@
 #include "induSPI.h"
 #include "stm32f103xb.h"
+SPI_HandleTypeDef hspi1;
 estAct_t estAct;
-
-#define SPI_TRANSFER_TIMEOUT_MS 5U
 
 static uint8_t spiTxBuffer[4];
 static uint8_t spiRxBuffer[4];
-static volatile bool spiTransferInProgress = false;
-static volatile bool spiInputsReady = false;
-static volatile uint32_t spiTransferStartTick = 0;
+
+typedef enum {
+  SPI_IDLE,
+  SPI_READING_INPUTS,
+  SPI_INPUTS_READY,
+  SPI_WRITING_OUTPUTS
+} spiState_t;
+
+static volatile spiState_t spiState = SPI_IDLE;
 
 static uint16_t entCpu[4] = {GPIO_PIN_12, GPIO_PIN_13, GPIO_PIN_14, GPIO_PIN_15};
 static uint16_t salCpu[4] = {GPIO_PIN_3, GPIO_PIN_4, GPIO_PIN_5, GPIO_PIN_6};
@@ -16,8 +21,6 @@ static uint16_t salCpu[4] = {GPIO_PIN_3, GPIO_PIN_4, GPIO_PIN_5, GPIO_PIN_6};
 static void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_SPI1_Init(void);
-
-volatile bool receptionReady=false;
 
 void induInit(void){
     HAL_Init();
@@ -76,7 +79,6 @@ void plc_store_spi_inputs(void){
         estAct.modIa[i] = spiRxBuffer[i + 1];
     }
 
-    spiInputsReady = true;
 }
 
 
@@ -85,35 +87,29 @@ void plc_read_inputs(void){
         estAct.cpuId[i] = HAL_GPIO_ReadPin(GPIOB, entCpu[i]);
     }
 
-    //if (spiTransferInProgress) {
-    //    if ((HAL_GetTick() - spiTransferStartTick) > SPI_TRANSFER_TIMEOUT_MS) {
-    //        spiTransferInProgress = false;
-    //        spiTransferStartTick = 0;
-    //        spiInputsReady = true;
-    //        HAL_GPIO_WritePin(SPI1_NSS2_GPIO_Port, SPI1_NSS2_Pin, GPIO_PIN_SET);
-    //    }
-    //    return;
-    //}
+  if (spiState != SPI_IDLE) {
+    return;
+  }
 
     spiTxBuffer[0] = 0x01;
     
     for (int i = 1; i < 4; i++) {//asegurarse que lo demas es 0
         spiTxBuffer[i] = 0x00;
     }
-    receptionReady=false;
 
-    HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_SET);  //cambiar a set
+    /* Una lectura SPI necesita transmitir para generar el reloj. */
+    HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_SET);
     HAL_GPIO_WritePin(SPI1_NSS2_GPIO_Port, SPI1_NSS2_Pin, GPIO_PIN_RESET);
-    HAL_SPI_Transmit_IT(&hspi1, (uint8_t *)&spiTxBuffer, 4);
 
-    //spiTransferInProgress = true;
-    //spiTransferStartTick = HAL_GetTick();
-    for (int i = 0; i < 4; i++) {//asegurarse que lo demas es 0
+    for (int i = 0; i < 4; i++) {
         spiRxBuffer[i] = 0x00;
     }
-    HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_SET);  //cambiar a set
-    HAL_GPIO_WritePin(SPI1_NSS2_GPIO_Port, SPI1_NSS2_Pin, GPIO_PIN_RESET);
-    HAL_SPI_Receive_IT(&hspi1, (uint8_t *)&spiRxBuffer, 4);
+
+    spiState = SPI_READING_INPUTS;
+    if (HAL_SPI_TransmitReceive_IT(&hspi1, spiTxBuffer, spiRxBuffer, 4) != HAL_OK) {
+      spiState = SPI_IDLE;
+      HAL_GPIO_WritePin(SPI1_NSS2_GPIO_Port, SPI1_NSS2_Pin, GPIO_PIN_SET);
+    }
 
 }
 
@@ -122,48 +118,48 @@ void plc_write_outputs(void){
         HAL_GPIO_WritePin(GPIOB, salCpu[i], estAct.cpuOd[i]);
     }
 
-    if (spiTransferInProgress) {
-        return;
+    if (spiState != SPI_INPUTS_READY) {
+      return;
     }
 
-    uint8_t bufTx[4];
-    bufTx[0] = 0x02;
-    bufTx[1] = 0x00;
-    bufTx[2] = 0x00;
-    bufTx[3] = 0x00;
+    spiTxBuffer[0] = 0x02;
+    spiTxBuffer[1] = 0x00;
+    spiTxBuffer[2] = 0x00;
+    spiTxBuffer[3] = 0x00;
 
     for (int i = 0; i < 8; i++) {
         if (estAct.modOd[i]) {
-            bufTx[1] |= (uint8_t)(0x01 << i);
+            spiTxBuffer[1] |= (uint8_t)(0x01 << i);
         }
     }
 
     /* estAct.modOa has two channels indexed 0 and 1 */
     for (int i = 0; i < 2; i++) {
-        bufTx[i + 2] = estAct.modOa[i];
+        spiTxBuffer[i + 2] = estAct.modOa[i];
     }
 
-    HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_RESET);//cambiar por reset
+    HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_RESET);
     HAL_GPIO_WritePin(SPI1_NSS2_GPIO_Port, SPI1_NSS2_Pin, GPIO_PIN_SET);
-    HAL_SPI_Transmit_IT(&hspi1, bufTx, 4);
+    spiState = SPI_WRITING_OUTPUTS;
+    if (HAL_SPI_Transmit_IT(&hspi1, spiTxBuffer, 4) != HAL_OK) {
+      spiState = SPI_IDLE;
+      HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_SET);
+    }
 }
 
 void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi){
     if (hspi == &hspi1) {
-        receptionReady=true;
 
-        /* Deassert CS (NSS) after transmit completes */
-           //HAL_GPIO_WritePin(SPI1_NSS2_GPIO_Port, SPI1_NSS2_Pin, GPIO_PIN_SET);//cambiar a set
-        // HAL_GPIO_WritePin(SPI1_NSS2_GPIO_Port, SPI1_NSS2_Pin, GPIO_PIN_SET);//cambiar a set
-        // HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_SET);//cambiar a set
+          HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_SET);
+          spiState = SPI_IDLE;
     }
 }
 
-void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi){
+void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi){
     if (hspi == &hspi1) {
-        HAL_GPIO_WritePin(SPI1_NSS2_GPIO_Port, SPI1_NSS2_Pin, GPIO_PIN_SET);//cambiar a set
-        HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_SET);//cambiar a set
+    HAL_GPIO_WritePin(SPI1_NSS2_GPIO_Port, SPI1_NSS2_Pin, GPIO_PIN_SET);
         plc_store_spi_inputs();
+    spiState = SPI_INPUTS_READY;
     }
 }
 
@@ -171,11 +167,12 @@ void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi){
 
 void plc_run_cycle(void (*fuser)(void)){
     plc_read_inputs();
+
+  /* La logica espera al callback; nunca se ejecuta dentro de la ISR. */
+  if (spiState == SPI_INPUTS_READY) {
     fuser();
     plc_write_outputs();
-    // if (!spiTransferInProgress || spiInputsReady) {
-        //     spiInputsReady = false;
-    // }
+  }
 }
 void SystemClock_Config(void)
 {
@@ -234,7 +231,8 @@ static void MX_SPI1_Init(void)
   hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
   hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
-  hspi1.Init.NSS = SPI_NSS_HARD_OUTPUT;
+  /* Los dos CS se manejan manualmente con GPIO. */
+  hspi1.Init.NSS = SPI_NSS_SOFT;
   hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
   hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
