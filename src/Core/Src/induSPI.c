@@ -6,6 +6,9 @@ estAct_t estAct;
 static uint8_t spiTxBuffer[4];
 static uint8_t spiRxBuffer[4];
 
+static uint8_t InTxBuffer;
+static uint8_t InRxBuffer[3];
+
 typedef enum {
   SPI_IDLE,
   SPI_READING_INPUTS,
@@ -73,11 +76,11 @@ uint8_t anRead(int entrada){
 
 void plc_store_spi_inputs(void){
     for (int i = 0; i < 8; i++) {
-        estAct.modId[i] = (spiRxBuffer[0] >> i) & 0x1;
+        estAct.modId[i] = (InRxBuffer[0] >> i) & 0x1;
     }
 
     for (int i = 0; i < 2; i++) {
-        estAct.modIa[i] = spiRxBuffer[i + 1];
+        estAct.modIa[i] = InRxBuffer[i + 1];
     }
 
 }
@@ -87,12 +90,9 @@ void plc_read_inputs(void){
     for(int i= 0; i<4;i++){
         estAct.cpuId[i] = HAL_GPIO_ReadPin(GPIOB, entCpu[i]);
     }
-
-    spiTxBuffer[0] = 0x01;
     
-    for (int i = 1; i < 4; i++) {//asegurarse que lo demas es 0
-        spiTxBuffer[i] = 0x01;
-    }
+    InTxBuffer = 0x00;
+    InTxBuffer = 0x01;
 
     /* Una lectura SPI necesita transmitir para generar el reloj. */
     
@@ -102,8 +102,8 @@ void plc_read_inputs(void){
 
     HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_SET);
     HAL_GPIO_WritePin(SPI1_NSS2_GPIO_Port, SPI1_NSS2_Pin, GPIO_PIN_RESET);
-    HAL_SPI_Transmit(&hspi1, (uint8_t*)spiTxBuffer, 4, HAL_MAX_DELAY);
-    HAL_SPI_Receive(&hspi1, (uint8_t*)spiRxBuffer, 3, HAL_MAX_DELAY);
+    HAL_SPI_Transmit(&hspi1, &InTxBuffer, 1, 5);
+    HAL_SPI_Receive(&hspi1, (uint8_t*)InRxBuffer, 3, 5);
     HAL_GPIO_WritePin(SPI1_NSS2_GPIO_Port, SPI1_NSS2_Pin, GPIO_PIN_SET);
     plc_store_spi_inputs();
 }
@@ -157,7 +157,8 @@ void plc_run_cycle(void (*fuser)(void)){
 
   /* La logica espera al callback; nunca se ejecuta dentro de la ISR. */
     fuser();
-  // plc_write_outputs();
+    plc_write_outputs();
+    HAL_Delay(10);
 }
 void SystemClock_Config(void)
 {
@@ -218,7 +219,7 @@ static void MX_SPI1_Init(void)
   hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
   /* Los dos CS se manejan manualmente con GPIO. */
   hspi1.Init.NSS = SPI_NSS_SOFT;
-  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_8;
   hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
