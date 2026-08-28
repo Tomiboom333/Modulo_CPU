@@ -22,6 +22,18 @@ static volatile spiState_t spiState = SPI_IDLE;
 static uint16_t entCpu[4] = {GPIO_PIN_12, GPIO_PIN_13, GPIO_PIN_14, GPIO_PIN_15};
 static uint16_t salCpu[4] = {GPIO_PIN_3, GPIO_PIN_4, GPIO_PIN_5, GPIO_PIN_6};
 
+static void spi_deassert_all_cs(void)
+{
+    HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(SPI1_NSS2_GPIO_Port, SPI1_NSS2_Pin, GPIO_PIN_SET);
+}
+
+static void spi_wait_ready(void)
+{
+    while (HAL_SPI_GetState(&hspi1) != HAL_SPI_STATE_READY) {
+    }
+}
+
 static void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_SPI1_Init(void);
@@ -76,7 +88,7 @@ uint8_t anRead(int entrada){
 
 void plc_store_spi_inputs(void){
     for (int i = 0; i < 8; i++) {
-        estAct.modId[i] = (InRxBuffer[0] >> i) & 0x1;
+        estAct.modId[i] = ((InRxBuffer[0] >> i) & 0x1);
     }
 
     for (int i = 0; i < 2; i++) {
@@ -91,7 +103,6 @@ void plc_read_inputs(void){
         estAct.cpuId[i] = HAL_GPIO_ReadPin(GPIOB, entCpu[i]);
     }
     
-    InTxBuffer = 0x00;
     InTxBuffer = 0x01;
 
     /* Una lectura SPI necesita transmitir para generar el reloj. */
@@ -100,11 +111,15 @@ void plc_read_inputs(void){
       spiRxBuffer[i] = 0x00;
     }
 
+    spi_deassert_all_cs();
+    spi_wait_ready();
+
     HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_SET);
     HAL_GPIO_WritePin(SPI1_NSS2_GPIO_Port, SPI1_NSS2_Pin, GPIO_PIN_RESET);
     HAL_SPI_Transmit(&hspi1, &InTxBuffer, 1, 5);
     HAL_SPI_Receive(&hspi1, (uint8_t*)InRxBuffer, 3, 5);
-    HAL_GPIO_WritePin(SPI1_NSS2_GPIO_Port, SPI1_NSS2_Pin, GPIO_PIN_SET);
+
+    spi_deassert_all_cs();
     plc_store_spi_inputs();
 }
 
@@ -129,23 +144,24 @@ void plc_write_outputs(void){
         spiTxBuffer[i + 2] = estAct.modOa[i];
     }
 
-    
+    spi_deassert_all_cs();
+    spi_wait_ready();
 
     HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_RESET);
     HAL_GPIO_WritePin(SPI1_NSS2_GPIO_Port, SPI1_NSS2_Pin, GPIO_PIN_SET);
-    spiState = SPI_WRITING_OUTPUTS;
-    if (HAL_SPI_Transmit_IT(&hspi1, spiTxBuffer, 4) != HAL_OK) {
-      spiState = SPI_IDLE;//estaba en IDLE
-      HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_SET);
+
+    if (HAL_SPI_Transmit(&hspi1, spiTxBuffer, 4, 10) != HAL_OK) {
+        spi_deassert_all_cs();
+        return;
     }
-    
+
+    spi_deassert_all_cs();
 }
 
 void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi){
     if (hspi == &hspi1) {
-
-          HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_SET);
-          spiState = SPI_IDLE;
+        spi_deassert_all_cs();
+        spiState = SPI_IDLE;
     }
 }
 
@@ -154,11 +170,11 @@ void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi){
 
 void plc_run_cycle(void (*fuser)(void)){
     plc_read_inputs();
-
   /* La logica espera al callback; nunca se ejecuta dentro de la ISR. */
     fuser();
     plc_write_outputs();
     HAL_Delay(10);
+        
 }
 void SystemClock_Config(void)
 {
