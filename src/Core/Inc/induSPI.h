@@ -57,6 +57,18 @@
 #include "stdbool.h"
 #include "stdint.h"
 #include "main.h"
+
+typedef enum {
+    MBUS_OK = 0,
+    MBUS_INVALID_ARGUMENT,
+    MBUS_SPI_ERROR,
+    MBUS_TIMEOUT,
+    MBUS_INVALID_RESPONSE,
+    MBUS_EXCEPTION,
+    MBUS_QUEUE_FULL,
+    MBUS_NO_COMMAND
+} mbusStatus_t;
+
 typedef struct 
 {
     bool cpuId[4];
@@ -89,6 +101,39 @@ void plc_read_inputs();
 void plc_write_outputs();
 void plc_run_cycle(void (*fuser)(void));
 void plc_store_spi_inputs();
+
+/*
+ * Estas funciones solo guardan la orden; no realizan ninguna transferencia.
+ * Se pueden llamar varias veces antes de mbus_process(), hasta llenar la cola.
+ * position y quantity corresponden directamente a los campos de Modbus RTU.
+ */
+mbusStatus_t mbus_read_coils(uint8_t slaveAddress, uint16_t position, uint16_t quantity);
+mbusStatus_t mbus_read_input_contacts(uint8_t slaveAddress, uint16_t position, uint16_t quantity);
+mbusStatus_t mbus_read_holding_registers(uint8_t slaveAddress, uint16_t position, uint16_t quantity);
+mbusStatus_t mbus_read_input_registers(uint8_t slaveAddress, uint16_t position, uint16_t quantity);
+mbusStatus_t mbus_write_single_register(uint8_t slaveAddress, uint16_t position, uint16_t value);
+mbusStatus_t mbus_write_single_coil(uint8_t slaveAddress, uint16_t position, bool value);
+
+/* API compatible con Modulo_MBUS. Estas funciones tambien solo encolan. */
+mbusStatus_t readCoils(uint8_t address, uint16_t position, uint16_t quantity);
+mbusStatus_t writeSingleCoil(uint8_t address, uint16_t position, uint16_t value);
+mbusStatus_t writeMultipleCoils(uint8_t address, uint16_t position,
+                                const uint8_t *values, uint16_t quantity);
+mbusStatus_t readInputContacts(uint8_t address, uint16_t position, uint16_t quantity);
+mbusStatus_t readHoldingRegisters(uint8_t address, uint16_t position, uint16_t quantity);
+mbusStatus_t writeSingleRegister(uint8_t address, uint16_t position, uint16_t value);
+mbusStatus_t writeMultipleRegisters(uint8_t address, uint16_t position,
+                                    const uint16_t *values, uint16_t quantity);
+mbusStatus_t readAnalogInputs(uint8_t address, uint16_t position, uint16_t quantity);
+
+/*
+ * Toma la siguiente orden de la cola y la envía al modulo MBUS por SPI.
+ * La llamada espera la respuesta del esclavo Modbus y procesa una orden por
+ * llamada. Devuelve MBUS_NO_COMMAND si no hay ninguna orden pendiente.
+ */
+mbusStatus_t mbus_process(void);
+/* Devuelve la ultima respuesta Modbus RTU recibida, sin copiarla. */
+const uint8_t *mbus_get_last_response(uint8_t *responseLength);
 
 
 #ifdef __cplusplus

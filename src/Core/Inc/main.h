@@ -61,6 +61,8 @@ void Error_Handler(void);
 #define SPI1_NSS2_GPIO_Port GPIOA
 #define SPI1_NSS_Pin GPIO_PIN_4
 #define SPI1_NSS_GPIO_Port GPIOA
+#define MBUS_SPI_CS_Pin GPIO_PIN_2
+#define MBUS_SPI_CS_GPIO_Port GPIOA
 
 /* USER CODE BEGIN Private defines */
 

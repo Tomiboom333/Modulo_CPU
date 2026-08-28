@@ -1,29 +1,46 @@
 #include "main.h"
 #include "induSPI.h"
 
-void algo(){
-  if(digRead(MOD_IO, IO_SAL_1)) digWrite(MOD_IO, IO_SAL_1, HIGH);
-}
-int main(void)
+static bool ordenEnviada = false;
+static mbusStatus_t estadoOrden;
+static uint8_t longitudRespuesta;
+static const uint8_t *respuesta;
+
+void ejemploUsuario(void)
 {
-  induInit();
-  while(1){
-    plc_run_cycle(algo);
+  /* Esta funcion representa la logica normal del usuario. La orden solo se
+     agrega una vez; si se llamara siempre, se llenaria la cola rapidamente. */
+  if (!ordenEnviada) {
+    estadoOrden = writeSingleRegister(1, 10, 1234);
+    ordenEnviada = true;
   }
 }
 
+int main(void)
+{
+  induInit();
 
-induSPI.QuieroQueElPLCHagaAlgo(loquequieroquehaga);
+  while (1) {
+    /* plc_run_cycle ejecuta, en este orden:
+       leer entradas, ejemploUsuario, mbus_process y escribir salidas. */
+    plc_run_cycle(ejemploUsuario);
 
-
-void loquequieroquehaga(){
-  blablablabla
+    if (estadoOrden == MBUS_OK && ordenEnviada) {
+      /* La respuesta queda disponible despues de que el ciclo ejecuto
+         mbus_process(). Para una escritura, normalmente solo se verifica
+         el estado; para una lectura se pueden interpretar estos bytes. */
+      respuesta = mbus_get_last_response(&longitudRespuesta);
+      (void)respuesta;
+      (void)longitudRespuesta;
+    }
+  }
 }
 
+/* Para probar una lectura, reemplazar la orden anterior por:
 
-induSPI.ElPLCHizoAlgo(Callback);
+   estadoOrden = readHoldingRegisters(1, 0, 2);
 
-
-void Callback(){
-  hago algo si el plc lo hizo
-}
+   Luego, despues de plc_run_cycle(), respuesta contiene la trama Modbus:
+   respuesta[0] = direccion, respuesta[1] = funcion,
+   respuesta[2] = cantidad de bytes y los datos comienzan en respuesta[3].
+*/
