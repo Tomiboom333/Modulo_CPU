@@ -1,7 +1,11 @@
 #include "induSPI.h"
 #include "stm32f103xb.h"
+#include "modbus_crc.h"
+
+
 SPI_HandleTypeDef hspi1;
 estAct_t estAct;
+UART_HandleTypeDef huart3;
 
 static uint8_t spiTxBuffer[4];
 static uint8_t spiRxBuffer[4];
@@ -37,6 +41,7 @@ static void spi_wait_ready(void)
 static void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_SPI1_Init(void);
+static void MX_USART3_UART_Init(void);
 
 void induInit(void){
     HAL_Init();
@@ -45,6 +50,7 @@ void induInit(void){
     __HAL_AFIO_REMAP_SWJ_NOJTAG();
     MX_GPIO_Init();
     MX_SPI1_Init();
+    MX_USART3_UART_Init();
 }
 
 void digWrite(int modulo, int salida, bool estado){
@@ -174,7 +180,6 @@ void plc_run_cycle(void (*fuser)(void)){
     fuser();
     plc_write_outputs();
     HAL_Delay(10);
-        
 }
 void SystemClock_Config(void)
 {
@@ -270,12 +275,13 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOA, SPI1_NSS2_Pin|SPI1_NSS_Pin, GPIO_PIN_SET);//estaba en reset
+  HAL_GPIO_WritePin(GPIOA, TX_EN_Pin, GPIO_PIN_RESET);//estaba en reset
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3|GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_6, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : SPI1_NSS2_Pin SPI1_NSS_Pin */
-  GPIO_InitStruct.Pin = SPI1_NSS2_Pin|SPI1_NSS_Pin;
+  GPIO_InitStruct.Pin = SPI1_NSS2_Pin|SPI1_NSS_Pin|TX_EN_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -297,6 +303,33 @@ static void MX_GPIO_Init(void)
   /* USER CODE BEGIN MX_GPIO_Init_2 */
 
   /* USER CODE END MX_GPIO_Init_2 */
+}
+static void MX_USART3_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART3_Init 0 */
+
+  /* USER CODE END USART3_Init 0 */
+
+  /* USER CODE BEGIN USART3_Init 1 */
+
+  /* USER CODE END USART3_Init 1 */
+  huart3.Instance = USART3;
+  huart3.Init.BaudRate = 115200;
+  huart3.Init.WordLength = UART_WORDLENGTH_8B;
+  huart3.Init.StopBits = UART_STOPBITS_1;
+  huart3.Init.Parity = UART_PARITY_NONE;
+  huart3.Init.Mode = UART_MODE_TX_RX;
+  huart3.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart3.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART3_Init 2 */
+
+  /* USER CODE END USART3_Init 2 */
+
 }
 
 /* USER CODE BEGIN 4 */

@@ -57,6 +57,7 @@
 #include "stdbool.h"
 #include "stdint.h"
 #include "main.h"
+#include "mbus_funcs.h"
 typedef struct 
 {
     bool cpuId[4];

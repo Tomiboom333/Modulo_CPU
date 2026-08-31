@@ -1117,6 +1117,9 @@
       <file>
         <name>C:/Users/teg8/STM32Cube/Repository/STM32Cube_FW_F1_V1.8.7/Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_exti.c</name>
       </file>
+      <file>
+        <name>C:/Users/teg8/STM32Cube/Repository/STM32Cube_FW_F1_V1.8.7/Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_uart.c</name>
+      </file>
     </group>
   </group>
 </project>
