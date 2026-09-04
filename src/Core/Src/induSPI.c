@@ -3,6 +3,7 @@
 #include "modbus_crc.h"
 
 
+
 SPI_HandleTypeDef hspi1;
 estAct_t estAct;
 UART_HandleTypeDef huart3;
@@ -12,6 +13,32 @@ static uint8_t spiRxBuffer[4];
 
 static uint8_t InTxBuffer;
 static uint8_t InRxBuffer[3];
+
+GPIO_TypeDef *modulo[5] = {
+  SPI1_NSS1_GPIO_Port,
+  SPI1_NSS2_GPIO_Port,
+  SPI1_NSS3_GPIO_Port,
+  SPI1_NSS4_GPIO_Port,
+  SPI1_NSS5_GPIO_Port
+};
+
+uint16_t pinCs[5] = {
+  SPI1_NSS1_Pin,
+  SPI1_NSS2_Pin,
+  SPI1_NSS3_Pin,
+  SPI1_NSS4_Pin,
+  SPI1_NSS5_Pin
+};
+
+
+
+int contModulosIn = 0, contModulosOut = 0;
+GPIO_TypeDef *modulosIn[5], *modulosOut[5];
+
+uint16_t pinIn[5], pinOut[5];
+
+
+
 
 typedef enum {
   SPI_IDLE,
@@ -28,8 +55,9 @@ static uint16_t salCpu[4] = {GPIO_PIN_3, GPIO_PIN_4, GPIO_PIN_5, GPIO_PIN_6};
 
 static void spi_deassert_all_cs(void)
 {
-    HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_SET);
-    HAL_GPIO_WritePin(SPI1_NSS2_GPIO_Port, SPI1_NSS2_Pin, GPIO_PIN_SET);
+    for(int i=0; i<5; i++){
+      HAL_GPIO_WritePin(modulo[i], pinCs[i], GPIO_PIN_SET);
+    }
 }
 
 static void spi_wait_ready(void)
@@ -53,12 +81,46 @@ void induInit(void){
     MX_USART3_UART_Init();
 }
 
+void moduleDet(void){
+  contModulosIn=0; contModulosOut=0;
+  uint8_t infoMod[2];
+  for(int i = 0; i<5; i++){
+    infoMod[0]=0x00; infoMod[1]=0x00;
+    spi_deassert_all_cs();
+    spi_wait_ready();
+    HAL_GPIO_WritePin(modulo[i], pinCs[i], GPIO_PIN_RESET);
+    uint8_t tx = 0x48;
+    HAL_SPI_Transmit(&hspi1, &tx, 1, 5);
+    HAL_StatusTypeDef estado = HAL_SPI_Receive(&hspi1, infoMod, 2, 5);
+    spi_deassert_all_cs();
+    if(estado != HAL_OK){
+      continue;
+    }
+    switch(infoMod[1]){
+      case 0x01:
+        modulosIn[contModulosIn]=modulo[i];
+        pinIn[contModulosIn]=pinCs[i];
+        contModulosIn++;
+        break;
+      case 0x02:
+        modulosOut[contModulosOut]=modulo[i];
+        pinOut[contModulosOut]=pinCs[i];
+        contModulosOut++;
+        break;
+      default: 
+        break;
+    }
+    
+    
+  }
+
+}
+
 void digWrite(int modulo, int salida, bool estado){
     //modulo = 0 -> CPU
     //modulo = 1 -> I/O 
 
-    if(modulo) estAct.modOd[salida] = estado; // guardo el estado deseado de la salida elegida.
-    else estAct.cpuOd[salida] = estado;
+    estAct.modOd[modulo][salida] = estado; // guardo el estado deseado de la salida elegida.
     
     //Posibilidad de agregar más módulos
     //faltaria agregar defines
@@ -67,19 +129,18 @@ void digWrite(int modulo, int salida, bool estado){
     //}
 }
 
-void anWrite(int salida, uint8_t valor){
-    estAct.modOa[salida] = valor; // guardo el valor deseado (0 a 255) de la salida elegida.
+void anWrite(int modulo, int salida, uint8_t valor){
+    estAct.modOa[modulo][salida] = valor; // guardo el valor deseado (0 a 255) de la salida elegida.
 }
 
 bool digRead(int modulo, int entrada){
     //modulo = 0 -> CPU
     //modulo = 1 -> I/O 
-    if(modulo) return estAct.modId[entrada];
-    else  return estAct.cpuId[entrada];
+    return estAct.modId[modulo][entrada];
 }
 
-uint8_t anRead(int entrada){
-    return estAct.modIa[entrada];
+uint8_t anRead(int modulo, int entrada){
+    return estAct.modIa[modulo][entrada];
 }
 
 // void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi){
@@ -93,14 +154,15 @@ uint8_t anRead(int entrada){
 // }
 
 void plc_store_spi_inputs(void){
+  for(int j=0; j<contModulosIn; j++){
     for (int i = 0; i < 8; i++) {
-        estAct.modId[i] = ((InRxBuffer[0] >> i) & 0x1);
+        estAct.modId[j][i] = ((InRxBuffer[0] >> i) & 0x1);
     }
 
     for (int i = 0; i < 2; i++) {
-        estAct.modIa[i] = InRxBuffer[i + 1];
+        estAct.modIa[j][i] = InRxBuffer[i + 1];
     }
-
+  }
 }
 
 
@@ -112,21 +174,22 @@ void plc_read_inputs(void){
     InTxBuffer = 0x01;
 
     /* Una lectura SPI necesita transmitir para generar el reloj. */
-    
-    for (int i = 0; i < 4; i++) {
-      spiRxBuffer[i] = 0x00;
+    for(int j = 0; j<contModulosIn; j++){
+      for (int i = 0; i < 4; i++) {
+        spiRxBuffer[i] = 0x00;
+      }
+
+      spi_deassert_all_cs(); 
+      spi_wait_ready();
+
+
+      HAL_GPIO_WritePin(modulosIn[j], pinIn[j], GPIO_PIN_RESET);
+      HAL_SPI_Transmit(&hspi1, &InTxBuffer, 1, 5);
+      HAL_SPI_Receive(&hspi1, (uint8_t*)InRxBuffer, 3, 5);
+
+      spi_deassert_all_cs();
+      plc_store_spi_inputs();
     }
-
-    spi_deassert_all_cs();
-    spi_wait_ready();
-
-    HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_SET);
-    HAL_GPIO_WritePin(SPI1_NSS2_GPIO_Port, SPI1_NSS2_Pin, GPIO_PIN_RESET);
-    HAL_SPI_Transmit(&hspi1, &InTxBuffer, 1, 5);
-    HAL_SPI_Receive(&hspi1, (uint8_t*)InRxBuffer, 3, 5);
-
-    spi_deassert_all_cs();
-    plc_store_spi_inputs();
 }
 
 void plc_write_outputs(void){
@@ -138,37 +201,31 @@ void plc_write_outputs(void){
     spiTxBuffer[1] = 0x00;
     spiTxBuffer[2] = 0x00;
     spiTxBuffer[3] = 0x00;
-
-    for (int i = 0; i < 8; i++) {
-        if (estAct.modOd[i]) {
-            spiTxBuffer[1] |= (uint8_t)(0x01 << i);
+    for(int j=0; j<contModulosOut; j++){
+      spiTxBuffer[1] = 0x00;
+      for (int i = 0; i < 8; i++) {
+        if (estAct.modOd[j][i]) {
+          spiTxBuffer[1] |= (uint8_t)(0x01 << i);
         }
-    }
+      }
 
-    /* estAct.modOa has two channels indexed 0 and 1 */
-    for (int i = 0; i < 2; i++) {
-        spiTxBuffer[i + 2] = estAct.modOa[i];
-    }
+      /* estAct.modOa has two channels indexed 0 and 1 */
+      for (int i = 0; i < 2; i++) {
+          spiTxBuffer[i + 2] = estAct.modOa[j][i];
+      }
 
-    spi_deassert_all_cs();
-    spi_wait_ready();
+      spi_deassert_all_cs();
+      spi_wait_ready();
 
-    HAL_GPIO_WritePin(SPI1_NSS_GPIO_Port, SPI1_NSS_Pin, GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(SPI1_NSS2_GPIO_Port, SPI1_NSS2_Pin, GPIO_PIN_SET);
+      HAL_GPIO_WritePin(modulosOut[j], pinOut[j], GPIO_PIN_RESET);
 
-    if (HAL_SPI_Transmit(&hspi1, spiTxBuffer, 4, 10) != HAL_OK) {
-        spi_deassert_all_cs();
-        return;
-    }
+      if (HAL_SPI_Transmit(&hspi1, spiTxBuffer, 4, 10) != HAL_OK) {
+          spi_deassert_all_cs();
+          return;
+      }
 
-    spi_deassert_all_cs();
-}
-
-void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi){
-    if (hspi == &hspi1) {
-        spi_deassert_all_cs();
-        spiState = SPI_IDLE;
-    }
+      spi_deassert_all_cs();
+  }
 }
 
 
@@ -274,14 +331,16 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, SPI1_NSS2_Pin|SPI1_NSS_Pin, GPIO_PIN_SET);//estaba en reset
-  HAL_GPIO_WritePin(GPIOA, TX_EN_Pin, GPIO_PIN_RESET);//estaba en reset
+  HAL_GPIO_WritePin(GPIOA, SPI1_NSS1_Pin|SPI1_NSS2_Pin|SPI1_NSS3_Pin|SPI1_NSS4_Pin
+                          |SPI1_NSS5_Pin|TX_EN_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3|GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_6, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : SPI1_NSS2_Pin SPI1_NSS_Pin */
-  GPIO_InitStruct.Pin = SPI1_NSS2_Pin|SPI1_NSS_Pin|TX_EN_Pin;
+  /*Configure GPIO pins : SPI1_NSS1_Pin SPI1_NSS2_Pin SPI1_NSS3_Pin SPI1_NSS4_Pin
+                           SPI1_NSS5_Pin TX_EN_Pin */
+  GPIO_InitStruct.Pin = SPI1_NSS1_Pin|SPI1_NSS2_Pin|SPI1_NSS3_Pin|SPI1_NSS4_Pin
+                          |SPI1_NSS5_Pin|TX_EN_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -290,7 +349,7 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pins : PB12 PB13 PB14 PB15 */
   GPIO_InitStruct.Pin = GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PB3 PB4 PB5 PB6 */

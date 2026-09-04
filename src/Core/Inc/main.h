@@ -57,10 +57,16 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define SPI1_NSS2_Pin GPIO_PIN_3
+#define SPI1_NSS1_Pin GPIO_PIN_0
+#define SPI1_NSS1_GPIO_Port GPIOA
+#define SPI1_NSS2_Pin GPIO_PIN_1
 #define SPI1_NSS2_GPIO_Port GPIOA
-#define SPI1_NSS_Pin GPIO_PIN_4
-#define SPI1_NSS_GPIO_Port GPIOA
+#define SPI1_NSS3_Pin GPIO_PIN_2
+#define SPI1_NSS3_GPIO_Port GPIOA
+#define SPI1_NSS4_Pin GPIO_PIN_3
+#define SPI1_NSS4_GPIO_Port GPIOA
+#define SPI1_NSS5_Pin GPIO_PIN_4
+#define SPI1_NSS5_GPIO_Port GPIOA
 #define TX_EN_Pin GPIO_PIN_8
 #define TX_EN_GPIO_Port GPIOA
 

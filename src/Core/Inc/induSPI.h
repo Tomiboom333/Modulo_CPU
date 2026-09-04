@@ -7,23 +7,13 @@
 #define MOD_CPU 0
 #define MOD_IO 1//falta borrarlo
 
-#define MOD_O1 1
-#define MOD_O2 2
-#define MOD_O3 3
-#define MOD_O4 4
-#define MOD_O5 5
+#define MOD_1 0
+#define MOD_2 1
+#define MOD_3 2
+#define MOD_4 3
+#define MOD_5 4
 
-#define MOD_I1 1
-#define MOD_I2 2
-#define MOD_I3 3
-#define MOD_I4 4
-#define MOD_I5 5
 
-#define MOD_MBUS1 1
-#define MOD_MBUS2 2
-#define MOD_MBUS3 3
-#define MOD_MBUS4 4
-#define MOD_MBUS5 5
 
 #define IO_ENT_1 0
 #define IO_ENT_2 1
@@ -62,10 +52,10 @@ typedef struct
 {
     bool cpuId[4];
     bool cpuOd[4];
-    bool modId[8];
-    bool modOd[8];
-    uint8_t modIa[2];
-    uint8_t modOa[2];
+    bool modId[4][8];
+    bool modOd[4][8];
+    uint8_t modIa[4][2];
+    uint8_t modOa[4][2];
 }estAct_t;
 extern SPI_HandleTypeDef hspi1;
 
@@ -80,12 +70,13 @@ void moduleDet();
 
 void digWrite(int modulo, int salida, bool estado);
 
-void anWrite(int salida, uint8_t valor);
+void anWrite(int modulo, int salida, uint8_t valor);
 
 bool digRead(int modulo, int entrada);
 
-uint8_t anRead(int entrada);
+uint8_t anRead(int modulo, int entrada);
 
+void moduleDet();
 void plc_read_inputs();
 void plc_write_outputs();
 void plc_run_cycle(void (*fuser)(void));
