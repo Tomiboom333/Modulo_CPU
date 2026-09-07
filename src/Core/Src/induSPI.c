@@ -9,7 +9,7 @@ estAct_t estAct;
 UART_HandleTypeDef huart3;
 
 static uint8_t spiTxBuffer[4];
-static uint8_t spiRxBuffer[4];
+// static uint8_t spiRxBuffer[4];
 
 static uint8_t InTxBuffer;
 static uint8_t InRxBuffer[3];
@@ -79,24 +79,25 @@ void induInit(void){
     MX_GPIO_Init();
     MX_SPI1_Init();
     MX_USART3_UART_Init();
+    moduleDet();
 }
 
 void moduleDet(void){
   contModulosIn=0; contModulosOut=0;
-  uint8_t infoMod[2];
+  uint8_t infoMod;
   for(int i = 0; i<5; i++){
-    infoMod[0]=0x00; infoMod[1]=0x00;
+    infoMod=0x00;
     spi_deassert_all_cs();
     spi_wait_ready();
     HAL_GPIO_WritePin(modulo[i], pinCs[i], GPIO_PIN_RESET);
     uint8_t tx = 0x48;
-    HAL_SPI_Transmit(&hspi1, &tx, 1, 5);
-    HAL_StatusTypeDef estado = HAL_SPI_Receive(&hspi1, infoMod, 2, 5);
+    HAL_SPI_Transmit(&hspi1, &tx, 1, 10 );
+    HAL_StatusTypeDef estado = HAL_SPI_Receive(&hspi1, &infoMod, 1, 10);
     spi_deassert_all_cs();
     if(estado != HAL_OK){
       continue;
     }
-    switch(infoMod[1]){
+    switch(infoMod){
       case 0x01:
         modulosIn[contModulosIn]=modulo[i];
         pinIn[contModulosIn]=pinCs[i];
@@ -153,8 +154,7 @@ uint8_t anRead(int modulo, int entrada){
 //     }
 // }
 
-void plc_store_spi_inputs(void){
-  for(int j=0; j<contModulosIn; j++){
+void plc_store_spi_inputs(int j){
     for (int i = 0; i < 8; i++) {
         estAct.modId[j][i] = ((InRxBuffer[0] >> i) & 0x1);
     }
@@ -162,7 +162,6 @@ void plc_store_spi_inputs(void){
     for (int i = 0; i < 2; i++) {
         estAct.modIa[j][i] = InRxBuffer[i + 1];
     }
-  }
 }
 
 
@@ -175,8 +174,8 @@ void plc_read_inputs(void){
 
     /* Una lectura SPI necesita transmitir para generar el reloj. */
     for(int j = 0; j<contModulosIn; j++){
-      for (int i = 0; i < 4; i++) {
-        spiRxBuffer[i] = 0x00;
+      for (int i = 0; i < 3; i++) {
+        InRxBuffer[i] = 0x00;
       }
 
       spi_deassert_all_cs(); 
@@ -188,7 +187,7 @@ void plc_read_inputs(void){
       HAL_SPI_Receive(&hspi1, (uint8_t*)InRxBuffer, 3, 5);
 
       spi_deassert_all_cs();
-      plc_store_spi_inputs();
+      plc_store_spi_inputs(j);
     }
 }
 
