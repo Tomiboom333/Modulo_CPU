@@ -3,10 +3,11 @@
 bool estado = false;
 
 void algo(){
-  digWrite(MOD_1, IO_SAL_1, HIGH);
+  digWrite(MOD_OUT_1, SAL_1, HIGH);
+  digRead(MOD_IN_1, ENT_1 );
 }
 void algo2(){
-  digWrite(MOD_1, IO_SAL_1, LOW);
+  digWrite(MOD_OUT_1, SAL_1, LOW);
 }
 
 int main(void)
