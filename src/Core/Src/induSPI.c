@@ -1,6 +1,6 @@
 #include "induSPI.h"
 #include "stm32f103xb.h"
-#include "modbus_crc.h"
+#include "mbus_funcs.h"
 
 
 
@@ -35,9 +35,6 @@ int contModulosIn = 0, contModulosOut = 0;
 GPIO_TypeDef *modulosIn[5], *modulosOut[5];
 
 uint16_t pinIn[5], pinOut[5];
-
-static uint16_t entCpu[4] = {GPIO_PIN_12, GPIO_PIN_13, GPIO_PIN_14, GPIO_PIN_15};
-static uint16_t salCpu[4] = {GPIO_PIN_3, GPIO_PIN_4, GPIO_PIN_5, GPIO_PIN_6};
 
 static void spi_deassert_all_cs(void)
 {
@@ -77,12 +74,15 @@ void moduleDet(void){
     spi_wait_ready();
     HAL_GPIO_WritePin(modulo[i], pinCs[i], GPIO_PIN_RESET);
     uint8_t tx = 0x48;
-    HAL_SPI_Transmit(&hspi1, &tx, 1, 10 );
-    HAL_StatusTypeDef estado = HAL_SPI_Receive(&hspi1, &infoMod, 1, 10);
-    spi_deassert_all_cs();
-    if(estado != HAL_OK){
+    if(HAL_SPI_Transmit(&hspi1, &tx, 1, 10 ) != HAL_OK){
+      spi_deassert_all_cs();
       continue;
     }
+    if(HAL_SPI_Receive(&hspi1, &infoMod, 1, 10) != HAL_OK){
+      spi_deassert_all_cs();
+      continue;
+    }
+    spi_deassert_all_cs();
     switch(infoMod){
       case 0x01:
         modulosIn[contModulosIn]=modulo[i];
@@ -104,21 +104,43 @@ void moduleDet(void){
 }
 
 void digWrite(int modulo, int salida, bool estado){
-    estAct.modOd[modulo][salida] = estado; // guardo el estado deseado de la salida elegida.
+  
+  if (modulo < 0 || modulo >= 5)
+  return;
+  
+  if (salida < 0 || salida >= 8)
+  return;
+
+  estAct.modOd[modulo][salida] = estado; // guardo el estado deseado de la salida elegida.
 }
 
 void anWrite(int modulo, int salida, uint8_t valor){
+  if (modulo < 0 || modulo >= 5)
+  return;
+  
+  if (salida < 0 || salida >= 2)
+  return;
     estAct.modOa[modulo][salida] = valor; // guardo el valor deseado (0 a 255) de la salida elegida.
 }
 
 bool digRead(int modulo, int entrada){
-    //modulo = 0 -> CPU
-    //modulo = 1 -> I/O 
-    return estAct.modId[modulo][entrada];
+  if (modulo < 0 || modulo >= 5)
+  return false;
+
+  if (entrada < 0 || entrada >= 8)
+  return false;
+  
+  return estAct.modId[modulo][entrada];
 }
 
 uint8_t anRead(int modulo, int entrada){
-    return estAct.modIa[modulo][entrada];
+  if (modulo < 0 || modulo >= 5)
+  return 0;
+
+  if (entrada < 0 || entrada >= 2)
+  return false;
+
+  return estAct.modIa[modulo][entrada];
 }
 
 
@@ -134,10 +156,7 @@ void plc_store_spi_inputs(int j){
 
 
 void plc_read_inputs(void){
-    for(int i= 0; i<4;i++){
-        estAct.cpuId[i] = HAL_GPIO_ReadPin(GPIOB, entCpu[i]);
-    }
-    
+
     InTxBuffer = 0x01;
 
     /* Una lectura SPI necesita transmitir para generar el reloj. */
@@ -160,9 +179,6 @@ void plc_read_inputs(void){
 }
 
 void plc_write_outputs(void){
-    for (int i = 0; i < 4; i++) {
-        HAL_GPIO_WritePin(GPIOB, salCpu[i], estAct.cpuOd[i]);
-    }
 
     spiTxBuffer[0] = 0x02;
     spiTxBuffer[1] = 0x00;

@@ -37,29 +37,19 @@ uint8_t Data[256];
 //void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-    // size_t pos = 0;
     if (huart->Instance == USART3) {
-      // snprintf((char *)bufCompleto, sizeof(bufCompleto), "%s", RxData);
-      // //uart_rx_flag = 1;
       memcpy(Data, RxData, 256);
-      //Data[4,5]: Informacion para un holding register que manda dos bytes.
-      //if(Data[4] != 0) 
       HAL_UART_Receive_IT(&huart3, RxData, 9);
-  //    pos = snprintf(bufCompleto, sizeof(bufCompleto), "Datos recibidos: ");
     }
-    // for (uint16_t i = 0; i < Size && pos + 3 < sizeof(bufCompleto); ++i) {
-    //     int n = snprintf(bufCompleto + pos, sizeof(bufCompleto) - pos, "%02x", RxData[i]);
-    //     if (n < 0) break;
-    //     pos += (size_t)n;
-    // }
-
-    // if (pos + 2 < sizeof(bufCompleto)) {
-    //     snprintf(bufCompleto + pos, sizeof(bufCompleto) - pos, "\r\n");
-    // }
-
-    // CDC_Transmit_FS((uint8_t*)bufCompleto, strlen(bufCompleto));
+   
 }
-
+void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
+{
+    if (huart->Instance == USART3)
+    {
+        memcpy(Data, RxData, Size);
+    }
+}
 
 
 
@@ -72,7 +62,7 @@ void sendData (uint8_t *data, uint16_t size)
 
 	HAL_GPIO_WritePin(TX_EN_GPIO_Port,TX_EN_Pin , GPIO_PIN_RESET);
 
-  HAL_Delay(5);//estaba en 5
+  HAL_Delay(5);
 }
 
 
@@ -126,6 +116,10 @@ void writeMultipleCoils(uint16_t slAddress, uint16_t pos, uint8_t *values, uint1
   TxData[5] = (uint8_t)(numCoils&0xFF);  // Number of coils to write LOW
 
   TxData[6] = (numCoils + 7) / 8;  // Number of bytes needed to represent the coils
+
+  uint8_t byteCount = (numCoils + 7) / 8; // Number of bytes needed to represent the coils
+
+  memset(&TxData[7], 0, byteCount); // Clear the coil data bytes
 
   for (int i = 0; i < numCoils; i++) {
     TxData[7 + i/8] |= (values[i] ? (1 << (i % 8)) : 0);  // Set the appropriate bit for each coil

@@ -38,7 +38,6 @@
 #include "stdbool.h"
 #include "stdint.h"
 #include "main.h"
-#include "mbus_funcs.h"
 typedef struct 
 {
     bool modId[5][8];
@@ -55,7 +54,6 @@ extern "C" {
 //empezamos
 void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi);
 void induInit();
-void moduleDet();
 
 void digWrite(int modulo, int salida, bool estado);
 
