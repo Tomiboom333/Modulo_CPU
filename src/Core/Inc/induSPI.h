@@ -8,11 +8,13 @@
 #define MOD_IN_2 1
 #define MOD_IN_3 2
 #define MOD_IN_4 3
+#define MOD_IN_5 4
 
 #define MOD_OUT_1 0
 #define MOD_OUT_2 1
 #define MOD_OUT_3 2
 #define MOD_OUT_4 3
+#define MOD_OUT_5 4
 
 #define ENT_1 0
 #define ENT_2 1
