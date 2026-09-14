@@ -9,7 +9,6 @@ estAct_t estAct;
 UART_HandleTypeDef huart3;
 
 static uint8_t spiTxBuffer[4];
-// static uint8_t spiRxBuffer[4];
 
 static uint8_t InTxBuffer;
 static uint8_t InRxBuffer[3];
@@ -36,19 +35,6 @@ int contModulosIn = 0, contModulosOut = 0;
 GPIO_TypeDef *modulosIn[5], *modulosOut[5];
 
 uint16_t pinIn[5], pinOut[5];
-
-
-
-
-typedef enum {
-  SPI_IDLE,
-  SPI_READING_INPUTS,
-  SPI_INPUTS_READY,
-  SPI_WRITING_OUTPUTS,
-  SPI_ERROR
-} spiState_t;
-
-static volatile spiState_t spiState = SPI_IDLE;
 
 static uint16_t entCpu[4] = {GPIO_PIN_12, GPIO_PIN_13, GPIO_PIN_14, GPIO_PIN_15};
 static uint16_t salCpu[4] = {GPIO_PIN_3, GPIO_PIN_4, GPIO_PIN_5, GPIO_PIN_6};
@@ -118,16 +104,7 @@ void moduleDet(void){
 }
 
 void digWrite(int modulo, int salida, bool estado){
-    //modulo = 0 -> CPU
-    //modulo = 1 -> I/O 
-
     estAct.modOd[modulo][salida] = estado; // guardo el estado deseado de la salida elegida.
-    
-    //Posibilidad de agregar más módulos
-    //faltaria agregar defines
-    //if(modulo == 8){ 
-    //    estAct.modOd[7][salida] = estado;
-    //}
 }
 
 void anWrite(int modulo, int salida, uint8_t valor){
@@ -144,15 +121,6 @@ uint8_t anRead(int modulo, int entrada){
     return estAct.modIa[modulo][entrada];
 }
 
-// void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi){
-//     if (hspi == &hspi1) {
-//         spiTransferInProgress = false;
-//         spiTransferStartTick = 0;
-//         plc_store_spi_inputs();
-//            /* Deassert CS (NSS) after transaction completed */
-//            HAL_GPIO_WritePin(SPI1_NSS2_GPIO_Port, SPI1_NSS2_Pin, GPIO_PIN_SET);//cambiar a set
-//     }
-// }
 
 void plc_store_spi_inputs(int j){
     for (int i = 0; i < 8; i++) {

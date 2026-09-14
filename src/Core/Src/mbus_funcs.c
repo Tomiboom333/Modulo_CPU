@@ -1,5 +1,6 @@
 #include "stdio.h"
 
+
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "modbus_crc.h"

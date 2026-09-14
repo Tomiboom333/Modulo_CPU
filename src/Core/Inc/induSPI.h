@@ -4,44 +4,33 @@
 #define LOW 0
 #define HIGH 1
 
-#define MOD_CPU 0
-#define MOD_IO 1//falta borrarlo
+#define MOD_IN_1 0
+#define MOD_IN_2 1
+#define MOD_IN_3 2
+#define MOD_IN_4 3
 
-#define MOD_1 0
-#define MOD_2 1
-#define MOD_3 2
-#define MOD_4 3
-#define MOD_5 4
+#define MOD_OUT_1 0
+#define MOD_OUT_2 1
+#define MOD_OUT_3 2
+#define MOD_OUT_4 3
 
+#define ENT_1 0
+#define ENT_2 1
+#define ENT_3 2
+#define ENT_4 3
+#define ENT_5 4
+#define ENT_6 5
+#define ENT_7 6
+#define ENT_8 7
 
-
-#define IO_ENT_1 0
-#define IO_ENT_2 1
-#define IO_ENT_3 2
-#define IO_ENT_4 3
-#define IO_ENT_5 4
-#define IO_ENT_6 5
-#define IO_ENT_7 6
-#define IO_ENT_8 7
-
-#define IO_SAL_1 0
-#define IO_SAL_2 1
-#define IO_SAL_3 2
-#define IO_SAL_4 3
-#define IO_SAL_5 4
-#define IO_SAL_6 5
-#define IO_SAL_7 6
-#define IO_SAL_8 7
-
-#define CPU_ENT_1 0
-#define CPU_ENT_2 1
-#define CPU_ENT_3 2
-#define CPU_ENT_4 3
-
-#define CPU_SAL_1 0
-#define CPU_SAL_2 1
-#define CPU_SAL_3 2
-#define CPU_SAL_4 3
+#define SAL_1 0
+#define SAL_2 1
+#define SAL_3 2
+#define SAL_4 3
+#define SAL_5 4
+#define SAL_6 5
+#define SAL_7 6
+#define SAL_8 7
 
 #include "stm32f103xb.h"
 #include "stdbool.h"
@@ -80,7 +69,7 @@ void moduleDet();
 void plc_read_inputs();
 void plc_write_outputs();
 void plc_run_cycle(void (*fuser)(void));
-void plc_store_spi_inputs();
+void plc_store_spi_inputs(int j);
 
 
 #ifdef __cplusplus

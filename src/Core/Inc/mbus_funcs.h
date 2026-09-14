@@ -1,7 +1,7 @@
 #ifndef MBUS_FUNCS_H
 #define MBUS_FUNCS_H
 #include "induSPI.h"
-
+#include "string.h"
 uint8_t RxData[256];
 uint8_t TxData[256];
 uint8_t bufCompleto[128];
