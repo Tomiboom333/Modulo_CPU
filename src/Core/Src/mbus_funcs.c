@@ -22,8 +22,11 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-UART_HandleTypeDef huart3;
-
+uint8_t RxData[256];
+uint8_t TxData[256];
+uint8_t bufCompleto[128];
+volatile uint8_t uart_rx_flag;
+uint8_t Data[256];
 
 
 /* USER CODE BEGIN PV */

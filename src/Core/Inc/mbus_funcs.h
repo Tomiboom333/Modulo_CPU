@@ -2,13 +2,13 @@
 #define MBUS_FUNCS_H
 #include "induSPI.h"
 #include "string.h"
-uint8_t RxData[256];
-uint8_t TxData[256];
-uint8_t bufCompleto[128];
-volatile uint8_t uart_rx_flag;
+extern uint8_t RxData[256];
+extern uint8_t TxData[256];
+extern uint8_t bufCompleto[128];
+extern volatile uint8_t uart_rx_flag;
 
-uint8_t Data[256];
-
+extern uint8_t Data[256];
+extern UART_HandleTypeDef huart3;
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size);
 
 void sendData (uint8_t *data, uint16_t size);
