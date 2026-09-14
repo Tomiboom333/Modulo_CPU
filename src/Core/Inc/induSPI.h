@@ -41,12 +41,10 @@
 #include "mbus_funcs.h"
 typedef struct 
 {
-    bool cpuId[4];
-    bool cpuOd[4];
-    bool modId[4][8];
-    bool modOd[4][8];
-    uint8_t modIa[4][2];
-    uint8_t modOa[4][2];
+    bool modId[5][8];
+    bool modOd[5][8];
+    uint8_t modIa[5][2];
+    uint8_t modOa[5][2];
 }estAct_t;
 extern SPI_HandleTypeDef hspi1;
 
