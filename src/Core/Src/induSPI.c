@@ -68,12 +68,12 @@ void induInit(void){
 void moduleDet(void){
   contModulosIn=0; contModulosOut=0;
   uint8_t infoMod;
+  uint8_t tx = 0x48;
   for(int i = 0; i<5; i++){
     infoMod=0x00;
     spi_deassert_all_cs();
     spi_wait_ready();
     HAL_GPIO_WritePin(modulo[i], pinCs[i], GPIO_PIN_RESET);
-    uint8_t tx = 0x48;
     if(HAL_SPI_Transmit(&hspi1, &tx, 1, 10 ) != HAL_OK){
       spi_deassert_all_cs();
       continue;
@@ -84,7 +84,7 @@ void moduleDet(void){
     }
     spi_deassert_all_cs();
     switch(infoMod){
-      case 0x01:
+      case 0x12:
         modulosIn[contModulosIn]=modulo[i];
         pinIn[contModulosIn]=pinCs[i];
         contModulosIn++;
