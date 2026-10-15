@@ -62,6 +62,7 @@ void induInit(void){
     MX_GPIO_Init();
     MX_SPI1_Init();
     MX_USART3_UART_Init();
+    HAL_Delay(1000);
     moduleDet();
 }
 

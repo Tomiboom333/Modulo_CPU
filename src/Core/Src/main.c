@@ -3,14 +3,22 @@
 bool estado = false;
 
 void algo(){
-  digWrite(MOD_OUT_1, SAL_1, HIGH);
-  if (digRead(MOD_IN_1, ENT_1)||digRead(MOD_IN_1, ENT_2)||digRead(MOD_IN_1, ENT_3)||digRead(MOD_IN_1, ENT_4)||digRead(MOD_IN_1, ENT_5)||digRead(MOD_IN_1, ENT_6)||digRead(MOD_IN_1, ENT_7)||digRead(MOD_IN_1, ENT_8)){
+  // digWrite(MOD_OUT_1, SAL_1, HIGH);
+  // if (digRead(MOD_IN_1, ENT_1)||digRead(MOD_IN_1, ENT_2)||digRead(MOD_IN_1, ENT_3)||digRead(MOD_IN_1, ENT_4)||digRead(MOD_IN_1, ENT_5)||digRead(MOD_IN_1, ENT_6)||digRead(MOD_IN_1, ENT_7)||digRead(MOD_IN_1, ENT_8)){
+  //   digWrite(MOD_OUT_1, SAL_3, HIGH);
+  // }
+  // if (!(digRead(MOD_IN_1, ENT_1)||digRead(MOD_IN_1, ENT_2)||digRead(MOD_IN_1, ENT_3)||digRead(MOD_IN_1, ENT_4)||digRead(MOD_IN_1, ENT_5)||digRead(MOD_IN_1, ENT_6)||digRead(MOD_IN_1, ENT_7)||digRead(MOD_IN_1, ENT_8))){
+  //   digWrite(MOD_OUT_1, SAL_3, LOW);
+  // }
+  uint8_t value=anRead(MOD_IN_1, ENT_1);
+  if (value>=128){
     digWrite(MOD_OUT_1, SAL_3, HIGH);
   }
-  if (!(digRead(MOD_IN_1, ENT_1)||digRead(MOD_IN_1, ENT_2)||digRead(MOD_IN_1, ENT_3)||digRead(MOD_IN_1, ENT_4)||digRead(MOD_IN_1, ENT_5)||digRead(MOD_IN_1, ENT_6)||digRead(MOD_IN_1, ENT_7)||digRead(MOD_IN_1, ENT_8))){
+  else{
     digWrite(MOD_OUT_1, SAL_3, LOW);
   }
-  anWrite(MOD_OUT_1, SAL_1, anRead(MOD_IN_1, ENT_1));
+  anWrite(MOD_OUT_1, 0, anRead(MOD_IN_1, ENT_1));
+  anWrite(MOD_OUT_1, 1, anRead(MOD_IN_1, ENT_2));
 }
 void algo2(){
   digWrite(MOD_OUT_1, SAL_1, LOW);
