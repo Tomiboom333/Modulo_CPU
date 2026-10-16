@@ -17,8 +17,8 @@ void algo(){
   else{
     digWrite(MOD_OUT_1, SAL_3, LOW);
   }
-  anWrite(MOD_OUT_1, 0, anRead(MOD_IN_1, ENT_1));
-  anWrite(MOD_OUT_1, 1, anRead(MOD_IN_1, ENT_2));
+  anWrite(MOD_OUT_1, 0, 255);
+  anWrite(MOD_OUT_1, 1, 127);
 }
 void algo2(){
   digWrite(MOD_OUT_1, SAL_1, LOW);
