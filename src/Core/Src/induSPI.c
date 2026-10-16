@@ -49,6 +49,23 @@ static void spi_wait_ready(void)
     }
 }
 
+/* Pausa entre el comando y la lectura de la respuesta.
+ * El esclavo atiende el SPI por polling: despues de recibir el comando necesita
+ * unas decenas de us para leer sus entradas y cargar la respuesta en el SPI.
+ * Sin esta pausa el maestro empieza a dar clock antes de que el esclavo este listo. */
+#define SPI_PAUSA_ESCLAVO_US 100
+
+/* Contadores para verificar la comunicacion (se pueden ver con el depurador). */
+volatile uint32_t spiLecturasOk = 0;
+volatile uint32_t spiLecturasError = 0;
+
+/* Espera aproximada de al menos 'us' microsegundos a 72 MHz (medir con el osciloscopio). */
+static void spi_pausa_us(uint32_t us)
+{
+    for (volatile uint32_t i = 0; i < us * 12U; i++) {
+    }
+}
+
 static void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_SPI1_Init(void);
@@ -79,6 +96,7 @@ void moduleDet(void){
       spi_deassert_all_cs();
       continue;
     }
+    spi_pausa_us(SPI_PAUSA_ESCLAVO_US); // le damos tiempo al esclavo a cargar su ID
     if(HAL_SPI_Receive(&hspi1, &infoMod, 1, 10) != HAL_OK){
       spi_deassert_all_cs();
       continue;
@@ -171,11 +189,22 @@ void plc_read_inputs(void){
 
 
       HAL_GPIO_WritePin(modulosIn[j], pinIn[j], GPIO_PIN_RESET);
-      HAL_SPI_Transmit(&hspi1, &InTxBuffer, 1, 5);
-      HAL_SPI_Receive(&hspi1, (uint8_t*)InRxBuffer, 3, 5);
+      HAL_StatusTypeDef st = HAL_SPI_Transmit(&hspi1, &InTxBuffer, 1, 5);
+      spi_pausa_us(SPI_PAUSA_ESCLAVO_US); // le damos tiempo al esclavo a armar la respuesta
+      if (st == HAL_OK) {
+        st = HAL_SPI_Receive(&hspi1, (uint8_t*)InRxBuffer, 3, 5);
+      }
 
       spi_deassert_all_cs();
-      plc_store_spi_inputs(j);
+
+      /* Solo actualizamos las entradas si la transaccion salio bien;
+       * si fallo, se conserva la ultima lectura valida. */
+      if (st == HAL_OK) {
+        plc_store_spi_inputs(j);
+        spiLecturasOk++;
+      } else {
+        spiLecturasError++;
+      }
     }
 }
 
@@ -203,12 +232,19 @@ void plc_write_outputs(void){
 
       HAL_GPIO_WritePin(modulosOut[j], pinOut[j], GPIO_PIN_RESET);
 
-      if (HAL_SPI_Transmit(&hspi1, spiTxBuffer, 4, 10) != HAL_OK) {
-          spi_deassert_all_cs();
-          return;
+      /* Mismo esquema que la lectura: comando, pausa para que el esclavo
+       * lo procese, y despues los 3 bytes de datos. */
+      HAL_StatusTypeDef st = HAL_SPI_Transmit(&hspi1, &spiTxBuffer[0], 1, 5);
+      spi_pausa_us(SPI_PAUSA_ESCLAVO_US);
+      if (st == HAL_OK) {
+        st = HAL_SPI_Transmit(&hspi1, &spiTxBuffer[1], 3, 5);
       }
 
       spi_deassert_all_cs();
+
+      if (st != HAL_OK) {
+          return;
+      }
   }
 }
 
@@ -281,7 +317,9 @@ static void MX_SPI1_Init(void)
   hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
   /* Los dos CS se manejan manualmente con GPIO. */
   hspi1.Init.NSS = SPI_NSS_SOFT;
-  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_8;
+  /* 72 MHz / 32 = 2,25 MHz. Con /8 (9 MHz) un esclavo por polling no llega
+   * a leer/cargar cada byte a tiempo (~0,9 us por byte). */
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_32;
   hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
