@@ -16,28 +16,29 @@
 #define MOD_OUT_4 3
 #define MOD_OUT_5 4
 
-#define ENT_1 0
-#define ENT_2 1
-#define ENT_3 2
-#define ENT_4 3
-#define ENT_5 4
-#define ENT_6 5
-#define ENT_7 6
-#define ENT_8 7
+#define ENT_0 0
+#define ENT_1 1
+#define ENT_2 2
+#define ENT_3 3
+#define ENT_4 4
+#define ENT_5 5
+#define ENT_6 6
+#define ENT_7 7
 
-#define SAL_1 3
-#define SAL_2 2
-#define SAL_3 1
-#define SAL_4 0
-#define SAL_5 4
-#define SAL_6 5
-#define SAL_7 6
-#define SAL_8 7
+#define SAL_0 3
+#define SAL_1 2
+#define SAL_2 1
+#define SAL_3 0
+#define SAL_4 4
+#define SAL_5 5
+#define SAL_6 6
+#define SAL_7 7
 
 #include "stm32f103xb.h"
 #include "stdbool.h"
 #include "stdint.h"
 #include "main.h"
+#include "mbus_funcs.h"
 typedef struct 
 {
     bool modId[5][8];
