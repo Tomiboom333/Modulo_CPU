@@ -10,15 +10,11 @@ void algo(){
   // if (!(digRead(MOD_IN_1, ENT_1)||digRead(MOD_IN_1, ENT_2)||digRead(MOD_IN_1, ENT_3)||digRead(MOD_IN_1, ENT_4)||digRead(MOD_IN_1, ENT_5)||digRead(MOD_IN_1, ENT_6)||digRead(MOD_IN_1, ENT_7)||digRead(MOD_IN_1, ENT_8))){
   //   digWrite(MOD_OUT_1, SAL_3, LOW);
   // }
-  uint8_t value=anRead(MOD_IN_1, ENT_1);
-  if (value>=128){
-    digWrite(MOD_OUT_1, SAL_3, HIGH);
-  }
-  else{
-    digWrite(MOD_OUT_1, SAL_3, LOW);
-  }
-  anWrite(MOD_OUT_1, 0, 255);
-  anWrite(MOD_OUT_1, 1, 127);
+  digWrite(MOD_OUT_1, SAL_0, HIGH);
+  digWrite(MOD_OUT_1, SAL_1, HIGH);
+
+  digWrite(MOD_OUT_1, SAL_2, HIGH);
+  digWrite(MOD_OUT_1, SAL_3, HIGH);
 }
 void algo2(){
   digWrite(MOD_OUT_1, SAL_1, LOW);
