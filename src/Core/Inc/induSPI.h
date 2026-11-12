@@ -16,14 +16,14 @@
 #define MOD_OUT_4 3
 #define MOD_OUT_5 4
 
-#define ENT_0 0
-#define ENT_1 1
-#define ENT_2 2
-#define ENT_3 3
-#define ENT_4 4
-#define ENT_5 5
-#define ENT_6 6
-#define ENT_7 7
+#define ENT_0 7
+#define ENT_1 6
+#define ENT_2 5
+#define ENT_3 4
+#define ENT_4 3
+#define ENT_5 2
+#define ENT_6 1
+#define ENT_7 0
 
 #define SAL_0 3
 #define SAL_1 2

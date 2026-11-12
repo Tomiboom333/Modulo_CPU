@@ -220,7 +220,7 @@ void plc_run_cycle(void (*fuser)(void)){
   /* La logica espera al callback; nunca se ejecuta dentro de la ISR. */
     fuser();
     plc_write_outputs();
-    HAL_Delay(10);
+    HAL_Delay(20);
 }
 void SystemClock_Config(void)
 {

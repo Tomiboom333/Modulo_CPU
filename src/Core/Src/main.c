@@ -3,23 +3,22 @@
 bool estado = false;
 
 void algo(){
-  // digWrite(MOD_OUT_1, SAL_1, HIGH);
-  // if (digRead(MOD_IN_1, ENT_1)||digRead(MOD_IN_1, ENT_2)||digRead(MOD_IN_1, ENT_3)||digRead(MOD_IN_1, ENT_4)||digRead(MOD_IN_1, ENT_5)||digRead(MOD_IN_1, ENT_6)||digRead(MOD_IN_1, ENT_7)||digRead(MOD_IN_1, ENT_8)){
-  //   digWrite(MOD_OUT_1, SAL_3, HIGH);
-  // }
-  // if (!(digRead(MOD_IN_1, ENT_1)||digRead(MOD_IN_1, ENT_2)||digRead(MOD_IN_1, ENT_3)||digRead(MOD_IN_1, ENT_4)||digRead(MOD_IN_1, ENT_5)||digRead(MOD_IN_1, ENT_6)||digRead(MOD_IN_1, ENT_7)||digRead(MOD_IN_1, ENT_8))){
-  //   digWrite(MOD_OUT_1, SAL_3, LOW);
-  // }
-  digWrite(MOD_OUT_1, SAL_0, HIGH);
-  digWrite(MOD_OUT_1, SAL_1, HIGH);
-
-  digWrite(MOD_OUT_1, SAL_2, HIGH);
-  digWrite(MOD_OUT_1, SAL_3, HIGH);
+  estado = digRead(MOD_IN_1, ENT_0);
+  if(estado){
+    digWrite(MOD_OUT_1, SAL_0, HIGH);
+    digWrite(MOD_OUT_1, SAL_1, LOW);
+  }
+  else{
+    digWrite(MOD_OUT_1, SAL_0, LOW);
+    digWrite(MOD_OUT_1, SAL_1, HIGH);
+  }
 }
 void algo2(){
+  digWrite(MOD_OUT_1, SAL_0, LOW);
   digWrite(MOD_OUT_1, SAL_1, LOW);
+
   digWrite(MOD_OUT_1, SAL_2, LOW);
-  anWrite(MOD_OUT_1, SAL_1, 191);
+  digWrite(MOD_OUT_1, SAL_3, LOW);
 }
 
 int main(void)
@@ -27,9 +26,5 @@ int main(void)
   induInit();
   while(1){
     plc_run_cycle(algo);
-    // HAL_Delay(2500);
-    // plc_run_cycle(algo2);
-    // HAL_Delay(2500);
-  
   }
 }
