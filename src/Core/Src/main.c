@@ -1,8 +1,8 @@
 #include "main.h"
 #include "induSPI.h"
 bool estado = false;
-
-void algo(){
+uint8_t valor;
+void boton(){
   estado = digRead(MOD_IN_1, ENT_0);
   if(estado){
     digWrite(MOD_OUT_1, SAL_0, HIGH);
@@ -13,18 +13,24 @@ void algo(){
     digWrite(MOD_OUT_1, SAL_1, HIGH);
   }
 }
-void algo2(){
-  digWrite(MOD_OUT_1, SAL_0, LOW);
-  digWrite(MOD_OUT_1, SAL_1, LOW);
-
-  digWrite(MOD_OUT_1, SAL_2, LOW);
-  digWrite(MOD_OUT_1, SAL_3, LOW);
+void analogicas(){
+  valor = anRead(MOD_IN_1, 0);
+  if(valor > 128){
+    digWrite(MOD_OUT_1, SAL_0, LOW);
+    digWrite(MOD_OUT_1, SAL_1, HIGH);
+  }else if(valor < 128){
+    digWrite(MOD_OUT_1, SAL_0, HIGH);
+    digWrite(MOD_OUT_1, SAL_1, LOW);
+  }
+}
+void dinamo(){
+  anWrite(MOD_OUT_1, 1, 128);
 }
 
 int main(void)
 {
   induInit();
   while(1){
-    plc_run_cycle(algo);
+    plc_run_cycle(dinamo);
   }
 }
